@@ -1,6 +1,6 @@
 ---
 description: 오늘 한 일을 진행 기록에 추가
-argument-hint: 오늘 한 일 (예: A 우드락 모형 바닥판 완성)
+argument-hint: 오늘 한 일 (예: 지은 우드락 모형 바닥판 완성)
 ---
 `docs/진행기록.md` 에 오늘 날짜로 아래 내용을 추가해 줘: "$ARGUMENTS"
 
