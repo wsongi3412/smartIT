@@ -18,7 +18,8 @@
 |---|---|
 | [소개서 v3 (PDF)](docs/ExamSentry_소개서_v3.pdf) | 개요 · 준비물·예산 · 작동 원리 · 2분 시연과 일정 (4쪽) |
 | [시연 구성 페이지](https://claude.ai/artifact/7EgCDSjFHBoCVimPqJjBn9) | 전체 구조, 감지 대상, 1:10 모형, 준비물 |
-| [4인 숙제 페이지](https://claude.ai/artifact/1F9Pe9Ld64d7GHjcbHAwdL) | 전체 할 일 36개, 역할별 체크리스트 |
+| [4인 숙제 페이지](https://claude.ai/artifact/1F9Pe9Ld64d7GHjcbHAwdL) | 전체 할 일, 송이·A·B·C 역할별 체크리스트 |
+| [코드 지도](https://claude.ai/artifact/FLcH5mAC6e5hkHFZXu8G64) | 파일별 역할·확인 상태(돌려 봄 / 컴파일만 / 보드 와야), 공부할 주제와 사람별 순서 |
 
 > 페이지 링크는 공유받은 사람만 열 수 있습니다. 안 열리면 송이에게 요청하세요.
 
