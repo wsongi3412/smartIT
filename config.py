@@ -1,0 +1,59 @@
+"""ExamSentry 공통 설정 — 1:10 우드락 모형 기준 (길이 단위: mm, 시간 단위: 초).
+
+좌표: 칠판 쪽 벽이 y=0, 뒤쪽 벽이 y=ROOM_D. 복도는 뒤쪽 벽 바깥(y > ROOM_D).
+센서: A 앞왼쪽, B 앞오른쪽, C 뒤왼쪽, D 뒤오른쪽 모서리 기둥.
+"""
+import hashlib
+
+# ---- 모형 크기 ----
+ROOM_W, ROOM_D = 900, 600      # 실제 9m x 6m 의 1/10
+HALL_D = 150                   # 뒤쪽 벽 밖 복도 띠
+SENSOR_H = 150                 # 센서 기둥 높이
+DEVICE_H = 40                  # 책상 위 기기 높이
+
+SENSORS = {"A": (0, 0), "B": (ROOM_W, 0), "C": (0, ROOM_D), "D": (ROOM_W, ROOM_D)}
+SENSOR_IDS = list(SENSORS)
+
+INSIDE = ["앞왼쪽", "앞오른쪽", "뒤왼쪽", "뒤오른쪽"]
+CENTER = "가운데"              # 판정상 '보류'로 취급
+HALL = "복도"
+ALL_ZONES = INSIDE + [CENTER, HALL]
+HOLD = "보류"
+
+
+def zone_of(x, y):
+    """좌표 → 정답 구역 (시뮬레이션·연출 기록용)."""
+    if y > ROOM_D:
+        return HALL
+    cx, cy = ROOM_W / 2, ROOM_D / 2
+    if ((x - cx) / (ROOM_W * 0.14)) ** 2 + ((y - cy) / (ROOM_D * 0.14)) ** 2 <= 1:
+        return CENTER
+    return ("앞" if y < cy else "뒤") + ("왼쪽" if x < cx else "오른쪽")
+
+
+# ---- 1단계: 위치 판정 ----
+WINDOW_S = 2        # 2초 창
+MISSING = -100      # 안 잡힌 센서 채움값
+MIN_SENSORS = 3     # 3대 미만이면 창 버림
+K = 5               # k-NN 이웃 수
+MIN_VOTES = 3       # 5표 중 3표 이상이어야 확정
+SMOOTH = 3          # 최근 3창 다수결
+USE_ABS = True      # 정규화 벡터에 "가장 센 값"도 붙임 → 벽 감쇠 정보가 살아남음
+ABS_WEIGHT = 0.5    # (시뮬레이션 실험: 알루미늄 벽 + 절대 세기일 때만 복도 오판 43%→8%)
+
+# ---- 2단계: 의심도 ----
+EXAM_MIN = 50
+HIGH_MIN = 20       # 교실 안 누적 20분 이상 → 높음
+WATCH_MIN = 3       # 3분 이상 → 관찰
+INSIDE_RATIO = 0.5  # 교실 안 비율이 이보다 낮으면 '교실 밖'
+REAPPEAR_GAP = 60   # 60초 넘게 끊겼다 다시 나오면 '재등장'
+MERGE_GAP = 20      # MAC이 바뀐 신호를 이어 붙이는 최대 공백(초)
+MERGE_DIST = 6.0    # 이어 붙일 때 허용하는 지문 거리(dB, RMS)
+PROB_WATCH, PROB_HIGH = 0.4, 0.8   # RF 확률 → 단계
+
+# ---- 개인정보: MAC 해시 ----
+SALT = "examsentry-demo"           # 대회 당일엔 바꿔서 쓰기
+
+
+def hash_id(raw):
+    return hashlib.sha256((SALT + raw.lower()).encode()).hexdigest()[:10]
