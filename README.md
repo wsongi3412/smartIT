@@ -17,6 +17,7 @@
 | 문서 | 내용 |
 |---|---|
 | [소개서 v3 (PDF)](docs/ExamSentry_소개서_v3.pdf) | 개요 · 준비물·예산 · 작동 원리 · 2분 시연과 일정 (4쪽) |
+| [시스템 기초 설명서 (Word)](docs/ExamSentry_시스템_기초설명서.docx) | 무선 신호·ESP32·머신러닝 기초부터 k-NN, 랜덤포레스트, 태블릿 화면 읽기, 평가, 자주 받는 질문, 용어 사전까지 (18쪽) |
 | [시연 구성 페이지](https://claude.ai/artifact/7EgCDSjFHBoCVimPqJjBn9) | 전체 구조, 감지 대상, 1:10 모형, 준비물 |
 | [4인 숙제 페이지](https://claude.ai/artifact/1F9Pe9Ld64d7GHjcbHAwdL) | 전체 할 일, 송이·지은·동현·은수 역할별 체크리스트 |
 | [코드 지도](https://claude.ai/artifact/FLcH5mAC6e5hkHFZXu8G64) | 파일별 역할·확인 상태(돌려 봄 / 컴파일만 / 보드 와야), 공부할 주제와 사람별 순서 |
