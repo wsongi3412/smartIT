@@ -32,7 +32,7 @@ ESP32가 오면 입력만 진짜 센서로 바꾸면 됩니다. (데이터 형�
 | | 내용 |
 |---|---|
 | ✅ 돌려서 확인함 | AI 분석, 태블릿 화면, 가짜 데이터, 채점, 실시간 시연 리허설 |
-| ⏳ ESP32 와야 확인 | ESP32 펌웨어 3개(컴파일 전), USB 수집기, 신호 지도 기록기 |
+| ⏳ ESP32 와야 확인 | ESP32 펌웨어 3개 (**컴파일은 통과**, 보드에 올려 보기만 남음), USB 수집기, 신호 지도 기록기 |
 | ❌ 아직 없음 | 대시보드 보정 모드 화면, 누적 열지도 |
 
 > ⚠️ 아래 나오는 정확도 숫자는 전부 **시뮬레이션(가짜 데이터)** 결과입니다. 코드가 맞게 도는지 확인하는 용도이고, **발표에는 모형에서 직접 잰 숫자만** 씁니다.
@@ -154,7 +154,8 @@ smartIT/
 
 ## 🛠 ESP32가 오면 할 일 (순서대로)
 
-1. Arduino IDE에 ESP32 보드 설치 → `firmware/esp32_sensor` 를 **1대에만** 올려서 시리얼 모니터에 줄이 찍히는지 확인
+1. Arduino IDE → 보드 매니저에서 **esp32 (Espressif) 3.3.x** 설치 → `firmware/esp32_sensor` 를 **1대에만** 올려서 시리얼 모니터에 줄이 찍히는지 확인
+   - ⚠️ 센서 펌웨어는 **툴 → Partition Scheme → "Huge APP (3MB No OTA/1MB SPIFFS)"** 로 바꿔야 들어갑니다 (기본 설정이면 '용량 초과' 오류)
 2. 코드 맨 위 `SENSOR_ID` 를 A/B/C/D로 바꿔 4대에 올리기. 핫스팟 채널을 고정하고 `WIFI_CH` 를 맞추기
 3. `pip install pyserial` → `python serial_reader.py data/live.csv` → 4대 모두 데이터가 들어오는지
 4. 여분 ESP32에 `firmware/esp32_beacon` → 시리얼 모니터에서 비콘 주소 확인
@@ -169,6 +170,25 @@ smartIT/
                       --exams1 data/exams/day1 --exams2 data/exams/day2
     ```
     → `results/.../report.md` 의 숫자가 **발표용 실측 수치**입니다.
+
+---
+
+## 🔧 펌웨어 컴파일 (보드 없어도 됨)
+
+| 펌웨어 | 보드 선택 | 설정 | 용량 |
+|---|---|---|---|
+| `esp32_sensor` | ESP32 Dev Module | **Partition Scheme: Huge APP** | 52% |
+| `esp32_beacon` | ESP32 Dev Module | 기본 | 83% |
+| `esp32cam_glasses` | AI Thinker ESP32-CAM | 기본 | 56% |
+
+명령어로 한 번에 확인하려면 (`brew install arduino-cli` 후):
+```bash
+arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
+arduino-cli core update-index && arduino-cli core install esp32:esp32
+arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app firmware/esp32_sensor
+arduino-cli compile --fqbn esp32:esp32:esp32 firmware/esp32_beacon
+arduino-cli compile --fqbn esp32:esp32:esp32cam firmware/esp32cam_glasses
+```
 
 ---
 
