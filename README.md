@@ -32,8 +32,8 @@ ESP32가 오면 입력만 진짜 센서로 바꾸면 됩니다. (데이터 형�
 | | 내용 |
 |---|---|
 | ✅ 돌려서 확인함 | AI 분석, 태블릿 화면, 가짜 데이터, 채점, 실시간 시연 리허설 |
-| ⏳ ESP32 와야 확인 | ESP32 펌웨어(컴파일 전), USB 수집기, 신호 지도 기록기 |
-| ❌ 아직 없음 | AI 안경 대역용 ESP32-CAM 펌웨어, 대시보드 보정 모드 화면, 누적 열지도 |
+| ⏳ ESP32 와야 확인 | ESP32 펌웨어 3개(컴파일 전), USB 수집기, 신호 지도 기록기 |
+| ❌ 아직 없음 | 대시보드 보정 모드 화면, 누적 열지도 |
 
 > ⚠️ 아래 나오는 정확도 숫자는 전부 **시뮬레이션(가짜 데이터)** 결과입니다. 코드가 맞게 도는지 확인하는 용도이고, **발표에는 모형에서 직접 잰 숫자만** 씁니다.
 
@@ -62,7 +62,10 @@ python evaluate.py --wall-db 2     # 알루미늄 테이프 없이 우드락 벽
 python evaluate.py --dead D        # 센서 D가 고장 나면?
 python train_rf.py                 # 의심도 AI(랜덤포레스트) 학습 → data/rf.pkl
 python server.py --model data/rf.pkl   # 규칙 대신 AI 모델로 판정
+python run_all.py                  # ⭐ 전체 한 번에: 채점 + AI 학습 + 혼동 행렬 그림 + 보고서
 ```
+
+`run_all.py` 결과는 `results/<날짜_시각>/` 에 생깁니다: `report.md`(목표 대비 ✅/❌), `confusion.png`(혼동 행렬), `signals.csv`(신호별 판정), `rf.pkl`(AI 모델).
 
 실시간 시연 리허설 (가짜 ESP32 4대):
 
@@ -108,7 +111,8 @@ smartIT/
 ├── config.py          ⚙️  모든 설정 (모형 크기, 센서 위치, 기준값). 숫자 바꿀 땐 여기만!
 ├── pipeline.py        🧠  AI 본체: 2초 묶기 → 위치 판정 → 신호 이어 붙이기 → 의심도
 ├── train_rf.py        🧠  의심도 AI(랜덤포레스트) 학습: 1일차 학습 / 2일차 시험
-├── server.py          📱  태블릿 화면 서버 (리플레이 · 실시간 · 압축 시연)
+├── run_all.py         ⭐  한 번에 돌리기: 위치 채점 → 시험 채점 → AI 학습 → 보고서·그림
+├── server.py          📱  태블릿 화면 서버 (리플레이 · 실시간 · 압축 시연, 시험 끝나면 기록 자동 저장)
 ├── dashboard.html     📱  태블릿 화면 (배치도, 신호 목록, 쉬는 시간 배너, 센서 상태)
 ├── serial_reader.py   🔌  [ESP32용] 센서 4대 USB → CSV 저장 (주소는 해시로)
 ├── stage_log.py       🔌  [ESP32용] 신호 지도 만들 때 "지금 어느 구역" 기록
@@ -118,8 +122,9 @@ smartIT/
 ├── whitelist.txt          팀 노트북·핫스팟·태블릿 주소 (제외할 기기)
 ├── requirements.txt
 └── firmware/
-    ├── esp32_sensor/  📡  센서 4대에 올릴 프로그램 (1초 블루투스 ↔ 1초 Wi-Fi)
-    └── esp32_beacon/  📡  비콘(여분 ESP32): 신호 지도 측정 · 복도 통행 역할
+    ├── esp32_sensor/      📡  센서 4대에 올릴 프로그램 (1초 블루투스 ↔ 1초 Wi-Fi)
+    ├── esp32_beacon/      📡  비콘(여분 ESP32): 신호 지도 측정 · 복도 통행 역할
+    └── esp32cam_glasses/  🕶  AI 안경 대역(ESP32-CAM): BLE 계속 + 30초마다 사진 Wi-Fi 전송 + 10분마다 MAC 교체
 ```
 
 ### 역할별로 먼저 볼 파일
@@ -128,7 +133,7 @@ smartIT/
 |---|---|
 | 1 하드웨어 | `firmware/` 폴더 → ESP32 오면 1대에 먼저 올려 보기 |
 | 2 수집·데이터 | `serial_reader.py`, `stage_log.py`, 아래 "데이터 형식" |
-| 3 AI | `pipeline.py`, `config.py`, `evaluate.py`, `train_rf.py` |
+| 3 AI | `run_all.py` ⭐, `pipeline.py`, `config.py`, `evaluate.py`, `train_rf.py` |
 | 4 대시보드·발표 | `server.py`, `dashboard.html`, 아래 "2분 시연 타이밍" |
 
 ---
@@ -157,6 +162,29 @@ smartIT/
 6. **신호 지도 1일차**: `python stage_log.py data/calib_day1.csv --id <비콘 주소>` → 구역마다 여러 자리, 자리당 6초 이상
 7. **다른 날 2일차** 측정 → `python evaluate.py --calib-train data/calib_day1.csv --calib-test data/calib_day2.csv` → **진짜 수치**
 8. 실시간: `python server.py --live data/live.csv --calib data/calib_day1.csv --scale 40`
+9. **시험 연출 기록**: 실시간 모드로 시험을 끝낼 때마다 `data/exams/exam_시각.csv` 가 자동 저장됩니다. 같이 생기는 `_truth.csv` 의 level 칸에 정답(높음/관찰/낮음)을 채우고, 1일차·2일차 폴더로 나눠 둡니다.
+10. **한 번에 채점**:
+    ```bash
+    python run_all.py --calib1 data/calib_day1.csv --calib2 data/calib_day2.csv \
+                      --exams1 data/exams/day1 --exams2 data/exams/day2
+    ```
+    → `results/.../report.md` 의 숫자가 **발표용 실측 수치**입니다.
+
+---
+
+## 🕶 AI 안경 대역 펌웨어 (`firmware/esp32cam_glasses`)
+
+진짜 AI 안경은 비싸서, 같은 방식으로 신호를 내는 ESP32-CAM으로 대신합니다.
+
+| 진짜 AI 안경 | 대역 펌웨어 |
+|---|---|
+| 휴대폰과 블루투스 연결 유지 | BLE 광고를 100ms마다 계속 보냄 |
+| 찍은 사진을 Wi-Fi로 올림 | 30초마다 사진을 찍어 3초 동안 Wi-Fi로 몰아 보냄 |
+| 주소(MAC)를 주기적으로 바꿈 | 10분마다 재부팅하며 새 무작위 MAC |
+
+- 업로드 전에 코드 맨 위 `WIFI_SSID`, `WIFI_PASS` 를 시연 핫스팟으로 바꾸세요.
+- 시리얼 모니터(115200)에 현재 주소가 찍힙니다. 주소가 바뀔 때마다 찍히니, 시험 연출 정답(`_truth.csv`)에 모두 적어 주세요.
+- 숫자(30초, 10분)는 위쪽 `BURST_EVERY_S`, `ROTATE_MIN` 에서 바꿀 수 있습니다. `ROTATE_MIN 0` 이면 주소를 안 바꿉니다.
 
 ---
 

@@ -215,6 +215,20 @@ def level_rule(f):
     return "낮음", "짧은 신호"
 
 
+class RFModel:
+    """랜덤포레스트를 감싸서 항상 [낮음, 관찰, 높음] 3칸 확률을 돌려준다 (학습 데이터에 등급이 빠져도)."""
+
+    def __init__(self, rf):
+        self.rf = rf
+
+    def predict_proba(self, X):
+        p = self.rf.predict_proba(X)
+        out = np.zeros((len(X), 3))
+        for j, c in enumerate(self.rf.classes_):
+            out[:, int(c)] = p[:, j]
+        return out
+
+
 def level_from_proba(pr):
     """RF 3등급 확률 [낮음, 관찰, 높음] → 등급. 높음은 확률 PROB_HIGH 이상일 때만(잘못된 경보 억제)."""
     if pr[2] >= PROB_HIGH:

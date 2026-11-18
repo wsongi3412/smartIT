@@ -59,11 +59,38 @@ class State:
             elif cmd == "start":
                 self.phase, self.start = "시험 중", now
             elif cmd == "end":
-                self.phase, self.end_at = "쉬는 시간", now
+                if self.start is not None and self.end_at is None:
+                    self.phase, self.end_at = "쉬는 시간", now
+                    self.save_recording()
             elif cmd == "reset":
                 self.phase, self.start, self.end_at = "대기", None, None
                 self.base_from = now
                 self.numbers = {}
+
+    def save_recording(self):
+        """실시간 시험이 끝나면 기록을 data/exams/ 에 저장 → run_all.py 가 그대로 읽는다.
+        exam_시각.csv (t=시험 시작 기준 초), _meta.json (scale, end), _truth.csv (정답 양식, 사람이 채움)"""
+        try:
+            rows = self._live_rows()
+            end = self.end_at - self.start
+            folder = os.path.join(HERE, "data", "exams")
+            os.makedirs(folder, exist_ok=True)
+            base = os.path.join(folder, time.strftime("exam_%Y%m%d_%H%M%S"))
+            with open(base + ".csv", "w") as f:
+                f.write("t,sensor,kind,id,rssi,frame,n\n")
+                for r in rows:
+                    if r[0] <= end:
+                        f.write(",".join(str(x) for x in (round(r[0], 3),) + tuple(r[1:])) + "\n")
+            with open(base + "_meta.json", "w") as f:
+                json.dump({"scale": self.a.scale, "end": round(end, 3)}, f)
+            new_ids = sorted({r[3] for r in rows if 0 <= r[0] <= end} - {r[3] for r in rows if r[0] < 0})
+            with open(base + "_truth.csv", "w") as f:
+                f.write("id,level,note\n# level 칸에 높음/관찰/낮음, note 에 무엇이었는지 적기 (숨긴 기기 MAC은 원래 주소로 적어도 됨)\n")
+                for i in new_ids:
+                    f.write(f"{i},,\n")
+            print(f"[기록 저장] {base}.csv  (정답 양식: _truth.csv 채우기)")
+        except Exception as e:
+            print(f"[기록 저장 실패] {e}")
 
     def _live_rows(self):
         rows = []
@@ -95,6 +122,7 @@ class State:
                 now = ((self.end_at or time.time()) - self.start)
                 if self.end_at is None and now * a.scale >= EXAM_MIN * 60:   # 50분 되면 자동으로 쉬는 시간
                     self.phase, self.end_at = "쉬는 시간", self.start + EXAM_MIN * 60 / a.scale
+                    self.save_recording()
                     now = self.end_at - self.start
                 phase = self.phase
             scale = a.scale
