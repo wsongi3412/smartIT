@@ -36,7 +36,7 @@
 | 가짜 데이터로 실제 실행 확인 | `config.py` `pipeline.py` `server.py` `dashboard.html` `sim.py` `fake_live.py` `evaluate.py` `train_rf.py` `run_all.py` |
 | 컴파일만 통과 (보드에서 실행 전) | `firmware/esp32_sensor` (Partition Scheme: Huge APP 필요), `firmware/esp32_beacon`, `firmware/esp32cam_glasses` |
 | ESP32 와야 확인 | `serial_reader.py`, `stage_log.py` |
-| 아직 없음 | 대시보드 보정 모드 화면, 누적 열지도, 태블릿용 다듬기 |
+| 11-19 추가 (가짜 데이터·가짜 센서로 확인) | 대시보드 누적 열지도, 보정 탭(현장 신호 지도 보충), 태블릿용 큰 글씨·버튼, `server.py --at 분` 판넬 캡처 (`docs/screens/`) |
 
 ESP32 부품은 **아직 주문 전**. 실측 데이터 없음.
 
