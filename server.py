@@ -8,6 +8,9 @@
     python server.py --live data/live.csv --calib data/calib_real.csv --scale 40
     → 태블릿 화면의 버튼으로 [기준선] → [시험 시작] → [쉬는 시간]
     --scale 40 : 시연용 압축 (실제 1초 = 시험 40초, 약 75초면 50분)
+    → 시험 전 [보정] 탭: 구역마다 비콘을 놓고 [기록 시작]/[기록 끝] → [지도에 반영]
+③ 판넬 캡처용 고정 화면:
+    python server.py --at 35        # 시험 35분째 화면에서 멈춤 (50 이상이면 쉬는 시간 화면)
 
 태블릿은 같은 핫스팟에 붙어서 http://<노트북 IP>:8000 으로 접속.
 """
@@ -21,8 +24,8 @@ import time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 import sim
-from config import EXAM_MIN, SENSOR_IDS, hash_id
-from pipeline import Locator, analyze, load_rows, load_labels
+from config import EXAM_MIN, SENSOR_IDS, INSIDE, CENTER, HALL, ALL_ZONES, MIN_SENSORS, hash_id
+from pipeline import Locator, analyze, load_rows, load_labels, windowize, WINDOW_S
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LEVEL_ORDER = {"높음": 0, "관찰": 1, "낮음": 2}
@@ -35,9 +38,16 @@ class State:
         self.numbers = {}
         self.snapshot = {"phase": "준비 중", "signals": []}
         if a.calib:
-            self.loc = Locator().fit(load_rows(a.calib), load_labels(a.calib.replace(".csv", "_labels.csv")))
+            self.base_calib = (load_rows(a.calib), load_labels(a.calib.replace(".csv", "_labels.csv")))
         else:
-            self.loc = Locator().fit(*sim.make_calib(1))
+            self.base_calib = sim.make_calib(1)
+        self.loc = Locator().fit(*self.base_calib)
+        # 보정 모드: 현장에서 추가한 신호 지도 지점 (실시간 파일과 같은 폴더의 *_labels.csv 에 저장)
+        self.calib_labels, self.calib_cur, self.calib_applied = [], None, 0
+        if a.live:
+            self.calib_path = a.live.replace(".csv", "_labels.csv")
+            if os.path.exists(self.calib_path):
+                self.calib_labels = load_labels(self.calib_path)
         self.model = pickle.load(open(a.model, "rb")) if a.model else None
         self.whitelist = set()
         wl = os.path.join(HERE, "whitelist.txt")
@@ -112,6 +122,83 @@ class State:
                 rows.append((t - origin, p[1], p[2], p[3], int(p[4]), p[5], int(p[6])))
         return rows
 
+    # ---- 보정 모드 ----
+    def _raw_live_rows(self, since=0.0):
+        rows = []
+        if not os.path.exists(self.a.live):
+            return rows
+        with open(self.a.live) as f:
+            next(f, None)
+            for line in f:
+                p = line.rstrip().split(",")
+                if len(p) == 7 and float(p[0]) >= since:
+                    rows.append((float(p[0]), p[1], p[2], p[3], int(p[4]), p[5], int(p[6])))
+        return rows
+
+    def calib_candidates(self, span=8.0):
+        """최근 span초 동안 잡힌 신호 중 가장 센 것부터 (비콘을 놓은 자리 바로 옆 센서가 크게 들음)"""
+        now = time.time()
+        best = {}
+        for t, sen, kind, i, v, fr, n in self._raw_live_rows(now - span):
+            b = best.setdefault(i, {"id": i, "kind": kind, "max": -999, "sensors": set(), "n": 0})
+            b["max"] = max(b["max"], v)
+            b["sensors"].add(sen)
+            b["n"] += n
+        out = sorted(best.values(), key=lambda x: -x["max"])[:8]
+        return [{**x, "sensors": len(x["sensors"])} for x in out]
+
+    def calib_windows(self, t0, t1, dev):
+        wins = windowize([r for r in self._raw_live_rows(t0) if r[0] <= t1 and r[3] == dev])
+        return sum(1 for w in wins.get(dev, []) if w["n_sensors"] >= MIN_SENSORS)
+
+    def calib(self, cmd, body):
+        with self.lock:
+            if self.a.live is None:
+                return {"ok": False, "msg": "보정은 실시간 모드(--live)에서만 할 수 있어요"}
+            if self.phase not in ("대기", "기준선"):
+                return {"ok": False, "msg": "보정은 시험 전에만 할 수 있어요 ([초기화] 후 다시)"}
+            if cmd == "start":
+                if body.get("zone") not in ALL_ZONES or not body.get("id"):
+                    return {"ok": False, "msg": "구역과 비콘 신호를 고르세요"}
+                self.calib_cur = {"t0": time.time(), "zone": body["zone"], "id": body["id"]}
+                return {"ok": True, "msg": f"{body['zone']} 기록 중… 6초 이상 지나면 [기록 끝]"}
+            if cmd == "stop":
+                c = self.calib_cur
+                if not c:
+                    return {"ok": False, "msg": "기록 중인 지점이 없어요"}
+                t1 = time.time()
+                self.calib_cur = None
+                n = self.calib_windows(c["t0"], t1, c["id"])
+                if n < 2:
+                    return {"ok": False, "msg": f"쓸 수 있는 2초 창이 {n}개뿐이에요. 비콘이 켜져 있는지 보고 다시 기록하세요"}
+                self.calib_labels.append((c["t0"], t1, c["id"], c["zone"]))
+                with open(self.calib_path, "w") as f:
+                    f.write("start,end,id,zone\n")
+                    for l in self.calib_labels:
+                        f.write(f"{l[0]:.3f},{l[1]:.3f},{l[2]},{l[3]}\n")
+                return {"ok": True, "msg": f"{c['zone']} 기록 완료 (2초 창 {n}개)"}
+            if cmd == "undo":
+                if self.calib_labels:
+                    self.calib_labels.pop()
+                return {"ok": True, "msg": "마지막 지점을 지웠어요"}
+            if cmd == "apply":
+                if not self.calib_labels:
+                    return {"ok": False, "msg": "추가한 지점이 없어요"}
+                rows = self._raw_live_rows(min(l[0] for l in self.calib_labels) - 1)
+                b_rows, b_labels = self.base_calib
+                self.loc = Locator().fit(list(b_rows) + rows, list(b_labels) + self.calib_labels)
+                self.calib_applied = len(self.calib_labels)
+                return {"ok": True, "msg": f"신호 지도에 {len(self.calib_labels)}개 지점을 반영했어요 (지문 {len(self.loc.y)}개)"}
+            return {"ok": False, "msg": "알 수 없는 명령"}
+
+    def calib_state(self):
+        per = {z: 0 for z in ALL_ZONES}
+        for l in self.calib_labels:
+            per[l[3]] += 1
+        return {"points": per, "total": len(self.calib_labels), "applied": self.calib_applied,
+                "recording": self.calib_cur and {"zone": self.calib_cur["zone"],
+                                                 "sec": round(time.time() - self.calib_cur["t0"], 1)}}
+
     def tick(self):
         a = self.a
         if a.live:
@@ -131,8 +218,10 @@ class State:
             sensor_age = {s: (round(time.time() - seen[s], 1) if s in seen else None) for s in SENSOR_IDS}
         else:
             elapsed = (time.time() - self.t0) * a.speed - 120      # 기준선 2분부터 시작
+            if a.at is not None:                                     # 판넬 캡처용 고정 화면
+                elapsed = a.at * 60
             cycle = EXAM_MIN * 60 + 120 + a.break_s * a.speed
-            elapsed = (elapsed + 120) % cycle - 120 if a.loop else elapsed
+            elapsed = (elapsed + 120) % cycle - 120 if (a.loop and a.at is None) else elapsed
             if elapsed < 0:
                 phase, now = "기준선", 0.0
             elif elapsed < EXAM_MIN * 60:
@@ -156,10 +245,19 @@ class State:
                          "why": s["why"], "minutes": s["minutes"], "inside": s["inside"],
                          "macs": len(s["ids"]), "active": (now - s["last_t"]) < 10})
         show.sort(key=lambda x: (LEVEL_ORDER[x["level"]], x["no"]))
+        heat = {z: 0.0 for z in INSIDE + [CENTER, HALL]}      # 구역별 누적 분 (시험 시작 후 새 신호만)
+        for x in show:
+            if x["near"] in heat:
+                heat[x["near"]] += x["minutes"] if x["near"] != HALL else 0
+        for x in show:
+            if x["near"] == HALL:
+                heat[HALL] += 1
         snap = {"mode": "live" if a.live else "replay", "phase": phase, "exam_min": round(exam_min, 1),
                 "exam_total": EXAM_MIN, "signals": show,
                 "baseline_count": sum(1 for s in sig if s["baseline"]),
-                "sensor_age": sensor_age, "updated": time.strftime("%H:%M:%S")}
+                "sensor_age": sensor_age, "updated": time.strftime("%H:%M:%S"),
+                "heat": {k: round(v, 1) for k, v in heat.items()},
+                "calib": self.calib_state() if a.live else None}
         with self.lock:
             self.snapshot = snap
 
@@ -190,6 +288,9 @@ def make_handler(state):
                 with state.lock:
                     body = json.dumps(state.snapshot, ensure_ascii=False).encode()
                 self._send(200, body, "application/json; charset=utf-8")
+            elif self.path.startswith("/calib/candidates"):
+                body = json.dumps(state.calib_candidates() if state.a.live else [], ensure_ascii=False).encode()
+                self._send(200, body, "application/json; charset=utf-8")
             elif self.path in ("/", "/index.html"):
                 with open(os.path.join(HERE, "dashboard.html"), "rb") as f:
                     self._send(200, f.read(), "text/html; charset=utf-8")
@@ -197,7 +298,15 @@ def make_handler(state):
                 self._send(404, b"not found", "text/plain")
 
         def do_POST(self):
-            if self.path.startswith("/control/") and state.a.live:
+            if self.path.startswith("/calib/"):
+                n = int(self.headers.get("Content-Length") or 0)
+                try:
+                    body = json.loads(self.rfile.read(n) or b"{}")
+                except ValueError:
+                    body = {}
+                res = state.calib(self.path.rsplit("/", 1)[1], body)
+                self._send(200, json.dumps(res, ensure_ascii=False).encode(), "application/json; charset=utf-8")
+            elif self.path.startswith("/control/") and state.a.live:
                 state.control(self.path.rsplit("/", 1)[1])
                 state.tick()
                 self._send(200, b"ok", "text/plain")
@@ -227,6 +336,7 @@ if __name__ == "__main__":
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--variant", choices=["cam", "ear", "glasses"], default="cam")
     ap.add_argument("--model", help="train_rf.py 로 만든 data/rf.pkl (없으면 규칙 기반)")
+    ap.add_argument("--at", type=float, help="리플레이를 이 시험 분에 고정 (판넬 캡처용, 50 이상 = 쉬는 시간)")
     ap.add_argument("--port", type=int, default=8000)
     a = ap.parse_args()
     st = State(a)
