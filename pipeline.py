@@ -9,7 +9,7 @@ import numpy as np
 from sklearn.neighbors import KNeighborsClassifier
 
 from config import (USE_ABS, ABS_WEIGHT, SENSOR_IDS, INSIDE, CENTER, HALL, HOLD, WINDOW_S, MISSING, MIN_SENSORS, K,
-                    MIN_VOTES, SMOOTH, HIGH_MIN, WATCH_MIN, INSIDE_RATIO, REAPPEAR_GAP, MERGE_GAP, MERGE_DIST,
+                    MIN_VOTES, SMOOTH, HIGH_MIN, WATCH_MIN, INSIDE_RATIO, WALL_RATIO, WALL_MIN, REAPPEAR_GAP, MERGE_GAP, MERGE_DIST,
                     PROB_WATCH, PROB_HIGH)
 
 FEATURES = ["seen_ratio", "inside_ratio", "zone_changes", "reappear", "pkt_per_sec",
@@ -184,7 +184,7 @@ def features(tr, now, scale=1.0):
     reappear = sum(1 for a, b in zip(times, times[1:]) if (b - a) > REAPPEAR_GAP / scale)
     seen_s = len(ws) * WINDOW_S
     pk = sum(w["pkts"] for w in ws)
-    main = Counter(z for z in inside if z in INSIDE).most_common(1)
+    main = Counter(inside).most_common(1)          # 가운데도 '부근'으로 보여 줌 (11-22: 가운데 기기가 엉뚱한 구석으로 표시되던 문제)
     return {
         "seen_ratio": seen_s / max(now, WINDOW_S),
         "inside_ratio": len(inside) / max(len(inside) + len(hall), 1),
@@ -197,15 +197,29 @@ def features(tr, now, scale=1.0):
         "is_wifi": int(tr["kind"] == "WIFI"),
         # 잡힌 시간 × 교실 안 비율 (BLE처럼 판정 창이 드문 신호도 시간이 제대로 쌓이게)
         "inside_min": seen_s * (len(inside) / max(len(inside) + len(hall), 1)) * scale / 60,
-        "near": main[0][0] if main else (CENTER if inside else (HALL if hall else HOLD)),
+        # 대부분 복도면 '복도' (교실 안 몇 창 때문에 엉뚱한 자리로 표시되지 않게)
+        "near": (HALL if hall and len(inside) < WALL_RATIO * (len(inside) + len(hall))
+                 else main[0][0] if main else (HALL if hall else HOLD)),
         "first_t": ws[0]["t"], "last_t": ws[-1]["t"],
     }
+
+
+def near_wall(f):
+    """뒷벽 바로 앞 자리: 판정이 교실 안/복도 반반으로 갈리지만 오래 머문 신호.
+    복도에 서 있는 사람은 벽(알루미늄 테이프) 때문에 교실 안 비율이 거의 0이라 여기 안 걸린다."""
+    return (not f["in_baseline"] and WALL_RATIO <= f["inside_ratio"] < INSIDE_RATIO
+            and f["inside_min"] >= WALL_MIN)
+
+
+WALL_WHY = "벽 근처 — 복도와 헷갈림, 뒷벽 쪽 자리 확인"
 
 
 def level_rule(f):
     """규칙 기반 v0 (데이터가 쌓이면 RF로 교체)."""
     if f["in_baseline"]:
         return "낮음", "시험 전부터 있던 신호"
+    if near_wall(f):
+        return "관찰", f"{WALL_WHY} (교실 안 {f['inside_min']:.0f}분)"
     if f["inside_ratio"] < INSIDE_RATIO:
         return "낮음", "대부분 교실 밖(통행)"
     if f["inside_min"] >= HIGH_MIN:
@@ -254,11 +268,14 @@ def analyze(rows, loc, now, scale=1.0, whitelist=(), model=None):
             pr = model.predict_proba([[f[k] for k in RF_FEATURES]])[0]
             lvl = level_from_proba(pr)
             why = f"AI 판정 (높음 {pr[2]:.0%}) · 교실 안 {f['inside_min']:.0f}분"
+            if lvl == "낮음" and near_wall(f):       # AI가 놓쳐도 벽 근처는 관찰로 올림
+                lvl, why = "관찰", f"{WALL_WHY} (교실 안 {f['inside_min']:.0f}분)"
         else:
             lvl, why = level_rule(f)
         out.append({"ids": tr["ids"], "kind": tr["kind"], "near": f["near"], "level": lvl, "why": why,
                     "minutes": round(f["inside_min"], 1), "inside": round(f["inside_ratio"], 2),
                     "first_t": f["first_t"], "last_t": f["last_t"], "baseline": bool(tr["baseline"]),
+                    "wall": bool(near_wall(f)),
                     "f": {k: round(float(f[k]), 3) for k in FEATURES}})
     out.sort(key=lambda s: s["first_t"])
     return out

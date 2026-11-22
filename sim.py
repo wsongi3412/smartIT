@@ -162,6 +162,62 @@ def make_exam(seed, exam_min=50, baseline_s=120, wall_db=WALL_DB, variant=None):
     return rows, truth, variant
 
 
+# ---------------- 어려운 경우 ----------------
+HARD_CASES = {
+    "wall":   "뒷벽 바로 앞 자리에 숨긴 BLE 이어폰 (복도와 헷갈림)",
+    "center": "한가운데 자리에 숨긴 Wi-Fi 카메라 (네 센서 거리가 비슷)",
+    "two":    "숨긴 기기 2개 동시 (이어폰 + 카메라, 다른 자리)",
+    "hall":   "벽 바로 밖 복도에 시험 내내 서 있는 사람 (높음이 뜨면 안 됨)",
+}
+
+
+def make_hard(seed, case, exam_min=50, baseline_s=120, wall_db=WALL_DB):
+    """어려운 경우 1회분. 기준선 신호 + 복도 통행은 make_exam과 같고, case에 따라 주인공만 다르다."""
+    rng = np.random.default_rng(seed)
+    end = exam_min * 60
+    rows, truth = [], {}
+
+    def add(dev, t0, t1, level, note):
+        emit(dev, t0, t1, rng, rows, wall_db)
+        truth.setdefault(dev["id"], (level, note))
+
+    add({"id": "tablet", "kind": "WIFI", "rate": 3, "pos": lambda t: (ROOM_W * 0.7, ROOM_D + HALL_D * 0.6),
+         "data_ratio": 0.7}, -baseline_s, end, "낮음", "감독관 태블릿(기준선)")
+    for _ in range(rng.integers(6, 12)):
+        t0 = rng.uniform(-baseline_s, end - 30)
+        dur = rng.uniform(10, 25)
+        y = ROOM_D + rng.uniform(40, HALL_D - 20)
+        x0, x1 = (-100, ROOM_W + 100) if rng.random() < 0.5 else (ROOM_W + 100, -100)
+        add({"id": rand_mac(rng), "kind": "BLE", "rate": 4,
+             "pos": lambda t, t0=t0, dur=dur, y=y, x0=x0, x1=x1: (x0 + (x1 - x0) * (t - t0) / dur, y)},
+            t0, t0 + dur, "낮음", "복도 통행")
+
+    start = rng.uniform(2, 10) * 60
+    if case == "wall":
+        p = (rng.uniform(100, ROOM_W - 100), ROOM_D - rng.uniform(15, 60))   # 벽에서 1.5~6cm(실제 15~60cm)
+        add({"id": rand_mac(rng), "kind": "BLE", "rate": 2, "pos": lambda t: p}, start, end,
+            "높음", f"뒷벽 앞 BLE 이어폰 @{zone_of(*p)}")
+    elif case == "center":
+        p = (ROOM_W / 2 + rng.normal(0, 25), ROOM_D / 2 + rng.normal(0, 20))
+        add({"id": rand_mac(rng), "kind": "WIFI", "rate": 8, "pos": lambda t: p, "data_ratio": 0.9},
+            start, end, "높음", "가운데 Wi-Fi 카메라")
+    elif case == "two":
+        z1, z2 = rng.choice(INSIDE, 2, replace=False)
+        p1, p2 = rand_point(z1, rng), rand_point(z2, rng)
+        add({"id": rand_mac(rng), "kind": "BLE", "rate": 2, "pos": lambda t: p1}, start, end,
+            "높음", f"BLE 이어폰 @{z1}")
+        add({"id": rand_mac(rng), "kind": "WIFI", "rate": 8, "pos": lambda t: p2, "data_ratio": 0.9},
+            start + rng.uniform(0, 5) * 60, end, "높음", f"Wi-Fi 카메라 @{z2}")
+    elif case == "hall":
+        stand = (rng.uniform(100, ROOM_W - 100), ROOM_D + rng.uniform(15, 60))  # 벽 바로 밖
+        add({"id": rand_mac(rng), "kind": "BLE", "rate": 3, "pos": lambda t: stand}, start, end,
+            "낮음", "벽 바로 밖 복도에 시험 내내")
+    else:
+        raise ValueError(case)
+    rows.sort(key=lambda r: r[0])
+    return rows, truth
+
+
 def save_rows(path, rows):
     with open(path, "w", newline="") as f:
         w = csv.writer(f)
