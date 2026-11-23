@@ -38,7 +38,7 @@ def rssi_at(pos, sensor, kind, rng, wall_db):
     sx, sy = SENSORS[sensor]
     d = np.sqrt((pos[0] - sx) ** 2 + (pos[1] - sy) ** 2 + (SENSOR_H - DEVICE_H) ** 2)
     v = TX_10CM[kind] - 10 * PATH_N * np.log10(max(d, 30) / 100) + rng.normal(0, NOISE)
-    if pos[1] > ROOM_D:
+    if pos[0] > ROOM_W:          # 복도(오른쪽 벽 밖)에서 오는 신호는 벽을 지나며 약해짐
         v -= wall_db
     return v
 
@@ -59,8 +59,8 @@ def emit(dev, t0, t1, rng, rows, wall_db):
 
 def rand_point(zone, rng):
     while True:
-        x = rng.uniform(20, ROOM_W - 20)
-        y = rng.uniform(20, ROOM_D + HALL_D - 20)
+        x = rng.uniform(20, ROOM_W + HALL_D - 20)
+        y = rng.uniform(20, ROOM_D - 20)
         if zone_of(x, y) == zone:
             return (x, y)
 
@@ -107,12 +107,12 @@ def make_exam(seed, exam_min=50, baseline_s=120, wall_db=WALL_DB, variant=None):
         truth.setdefault(dev["id"], (level, note))
 
     # 기준선 신호 (시험 전부터 끝까지)
-    hall_spot = (ROOM_W * 0.7, ROOM_D + HALL_D * 0.6)
+    hall_spot = (ROOM_W + HALL_D * 0.6, ROOM_D * 0.7)
     add({"id": "tablet", "kind": "WIFI", "rate": 3, "pos": lambda t: hall_spot, "data_ratio": 0.7},
         -baseline_s, end, "낮음", "감독관 태블릿(기준선)")
-    add({"id": "hotspot", "kind": "WIFI", "rate": 10, "pos": lambda t: (ROOM_W * 0.3, ROOM_D + HALL_D * 0.5),
+    add({"id": "hotspot", "kind": "WIFI", "rate": 10, "pos": lambda t: (ROOM_W + HALL_D * 0.5, ROOM_D * 0.3),
          "data_ratio": 0.1}, -baseline_s, end, "낮음", "핫스팟(기준선)")
-    add({"id": "bldg-ap", "kind": "WIFI", "rate": 10, "pos": lambda t: (ROOM_W * 1.6, ROOM_D * 0.5),
+    add({"id": "bldg-ap", "kind": "WIFI", "rate": 10, "pos": lambda t: (ROOM_W * 0.5, -ROOM_D * 0.6),
          "data_ratio": 0.0}, -baseline_s, end, "낮음", "건물 AP(기준선)")
 
     # 숨긴 기기
@@ -146,15 +146,15 @@ def make_exam(seed, exam_min=50, baseline_s=120, wall_db=WALL_DB, variant=None):
     for _ in range(rng.integers(6, 12)):
         t0 = rng.uniform(-baseline_s, end - 30)
         dur = rng.uniform(10, 25)
-        y = ROOM_D + rng.uniform(40, HALL_D - 20)
-        x0, x1 = (-100, ROOM_W + 100) if rng.random() < 0.5 else (ROOM_W + 100, -100)
+        x = ROOM_W + rng.uniform(40, HALL_D - 20)          # 오른쪽 복도를 앞↔뒤로 지나감
+        y0, y1 = (-100, ROOM_D + 100) if rng.random() < 0.5 else (ROOM_D + 100, -100)
         add({"id": rand_mac(rng), "kind": "BLE", "rate": 4,
-             "pos": lambda t, t0=t0, dur=dur, y=y, x0=x0, x1=x1: (x0 + (x1 - x0) * (t - t0) / dur, y)},
+             "pos": lambda t, t0=t0, dur=dur, x=x, y0=y0, y1=y1: (x, y0 + (y1 - y0) * (t - t0) / dur)},
             t0, t0 + dur, "낮음", "복도 통행")
 
     # 복도에 오래 서 있는 사람 (벽 바로 밖)
     t0 = rng.uniform(5, 20) * 60
-    stand = (rng.uniform(100, ROOM_W - 100), ROOM_D + rng.uniform(40, 90))
+    stand = (ROOM_W + rng.uniform(40, 90), rng.uniform(100, ROOM_D - 100))
     add({"id": rand_mac(rng), "kind": "BLE", "rate": 3, "pos": lambda t: stand}, t0, t0 + rng.uniform(20, 28) * 60,
         "낮음", "복도에 오래 서 있음")
 
@@ -164,7 +164,7 @@ def make_exam(seed, exam_min=50, baseline_s=120, wall_db=WALL_DB, variant=None):
 
 # ---------------- 어려운 경우 ----------------
 HARD_CASES = {
-    "wall":   "뒷벽 바로 앞 자리에 숨긴 BLE 이어폰 (복도와 헷갈림)",
+    "wall":   "복도 쪽(오른쪽) 벽 바로 앞 자리에 숨긴 BLE 이어폰 (복도와 헷갈림)",
     "center": "한가운데 자리에 숨긴 Wi-Fi 카메라 (네 센서 거리가 비슷)",
     "two":    "숨긴 기기 2개 동시 (이어폰 + 카메라, 다른 자리)",
     "hall":   "벽 바로 밖 복도에 시험 내내 서 있는 사람 (높음이 뜨면 안 됨)",
@@ -181,22 +181,22 @@ def make_hard(seed, case, exam_min=50, baseline_s=120, wall_db=WALL_DB):
         emit(dev, t0, t1, rng, rows, wall_db)
         truth.setdefault(dev["id"], (level, note))
 
-    add({"id": "tablet", "kind": "WIFI", "rate": 3, "pos": lambda t: (ROOM_W * 0.7, ROOM_D + HALL_D * 0.6),
+    add({"id": "tablet", "kind": "WIFI", "rate": 3, "pos": lambda t: (ROOM_W + HALL_D * 0.6, ROOM_D * 0.7),
          "data_ratio": 0.7}, -baseline_s, end, "낮음", "감독관 태블릿(기준선)")
     for _ in range(rng.integers(6, 12)):
         t0 = rng.uniform(-baseline_s, end - 30)
         dur = rng.uniform(10, 25)
-        y = ROOM_D + rng.uniform(40, HALL_D - 20)
-        x0, x1 = (-100, ROOM_W + 100) if rng.random() < 0.5 else (ROOM_W + 100, -100)
+        x = ROOM_W + rng.uniform(40, HALL_D - 20)          # 오른쪽 복도를 앞↔뒤로 지나감
+        y0, y1 = (-100, ROOM_D + 100) if rng.random() < 0.5 else (ROOM_D + 100, -100)
         add({"id": rand_mac(rng), "kind": "BLE", "rate": 4,
-             "pos": lambda t, t0=t0, dur=dur, y=y, x0=x0, x1=x1: (x0 + (x1 - x0) * (t - t0) / dur, y)},
+             "pos": lambda t, t0=t0, dur=dur, x=x, y0=y0, y1=y1: (x, y0 + (y1 - y0) * (t - t0) / dur)},
             t0, t0 + dur, "낮음", "복도 통행")
 
     start = rng.uniform(2, 10) * 60
     if case == "wall":
-        p = (rng.uniform(100, ROOM_W - 100), ROOM_D - rng.uniform(15, 60))   # 벽에서 1.5~6cm(실제 15~60cm)
+        p = (ROOM_W - rng.uniform(15, 60), rng.uniform(100, ROOM_D - 100))   # 오른쪽 벽에서 1.5~6cm(실제 15~60cm)
         add({"id": rand_mac(rng), "kind": "BLE", "rate": 2, "pos": lambda t: p}, start, end,
-            "높음", f"뒷벽 앞 BLE 이어폰 @{zone_of(*p)}")
+            "높음", f"복도 쪽 벽 앞 BLE 이어폰 @{zone_of(*p)}")
     elif case == "center":
         p = (ROOM_W / 2 + rng.normal(0, 25), ROOM_D / 2 + rng.normal(0, 20))
         add({"id": rand_mac(rng), "kind": "WIFI", "rate": 8, "pos": lambda t: p, "data_ratio": 0.9},
@@ -209,7 +209,7 @@ def make_hard(seed, case, exam_min=50, baseline_s=120, wall_db=WALL_DB):
         add({"id": rand_mac(rng), "kind": "WIFI", "rate": 8, "pos": lambda t: p2, "data_ratio": 0.9},
             start + rng.uniform(0, 5) * 60, end, "높음", f"Wi-Fi 카메라 @{z2}")
     elif case == "hall":
-        stand = (rng.uniform(100, ROOM_W - 100), ROOM_D + rng.uniform(15, 60))  # 벽 바로 밖
+        stand = (ROOM_W + rng.uniform(15, 60), rng.uniform(100, ROOM_D - 100))  # 벽 바로 밖
         add({"id": rand_mac(rng), "kind": "BLE", "rate": 3, "pos": lambda t: stand}, start, end,
             "낮음", "벽 바로 밖 복도에 시험 내내")
     else:

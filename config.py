@@ -1,13 +1,14 @@
 """ExamSentry 공통 설정 — 1:10 우드락 모형 기준 (길이 단위: mm, 시간 단위: 초).
 
-좌표: 칠판 쪽 벽이 y=0, 뒤쪽 벽이 y=ROOM_D. 복도는 뒤쪽 벽 바깥(y > ROOM_D).
+좌표: 칠판 쪽 벽이 y=0, 뒤쪽 벽이 y=ROOM_D, 왼쪽 벽 x=0, 오른쪽 벽 x=ROOM_W.
+복도는 오른쪽 벽 바깥(x > ROOM_W). (11-23: 실제 시험장은 대부분 복도가 오른쪽이라 뒤쪽에서 옮김)
 센서: A 앞왼쪽, B 앞오른쪽, C 뒤왼쪽, D 뒤오른쪽 모서리 기둥.
 """
 import hashlib
 
 # ---- 모형 크기 ----
 ROOM_W, ROOM_D = 900, 600      # 실제 9m x 6m 의 1/10
-HALL_D = 150                   # 뒤쪽 벽 밖 복도 띠
+HALL_D = 150                   # 오른쪽 벽 밖 복도 띠의 폭
 SENSOR_H = 150                 # 센서 기둥 높이
 DEVICE_H = 40                  # 책상 위 기기 높이
 
@@ -23,7 +24,7 @@ HOLD = "보류"
 
 def zone_of(x, y):
     """좌표 → 정답 구역 (시뮬레이션·연출 기록용)."""
-    if y > ROOM_D:
+    if x > ROOM_W:
         return HALL
     cx, cy = ROOM_W / 2, ROOM_D / 2
     if ((x - cx) / (ROOM_W * 0.14)) ** 2 + ((y - cy) / (ROOM_D * 0.14)) ** 2 <= 1:

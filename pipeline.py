@@ -205,13 +205,13 @@ def features(tr, now, scale=1.0):
 
 
 def near_wall(f):
-    """뒷벽 바로 앞 자리: 판정이 교실 안/복도 반반으로 갈리지만 오래 머문 신호.
+    """복도 쪽 벽 바로 앞 자리: 판정이 교실 안/복도 반반으로 갈리지만 오래 머문 신호.
     복도에 서 있는 사람은 벽(알루미늄 테이프) 때문에 교실 안 비율이 거의 0이라 여기 안 걸린다."""
     return (not f["in_baseline"] and WALL_RATIO <= f["inside_ratio"] < INSIDE_RATIO
             and f["inside_min"] >= WALL_MIN)
 
 
-WALL_WHY = "벽 근처 — 복도와 헷갈림, 뒷벽 쪽 자리 확인"
+WALL_WHY = "벽 근처 — 복도와 헷갈림, 복도 쪽 벽 자리 확인"
 
 
 def level_rule(f):
