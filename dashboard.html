@@ -30,8 +30,22 @@ h1{font-size:19px;margin:0;font-weight:800;letter-spacing:-.01em}
 .tabs button{border:0;background:transparent;padding:8px 16px;border-radius:9px;font-weight:700;min-height:40px}
 .tabs button[aria-selected="true"]{background:var(--panel);box-shadow:0 1px 2px rgba(0,0,0,.12)}
 .ctl{display:none;gap:8px;flex-wrap:wrap}
-.ctl button{min-height:44px;padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:600}
-.ctl button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.ctl{align-items:center}
+.ctl button{min-height:44px;padding:8px 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);font-weight:700}
+.ctl button b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--low-bg);font-size:13px;margin-right:6px}
+.ctl button.next{background:var(--accent);border-color:var(--accent);color:#fff}
+.ctl button.next b{background:rgba(255,255,255,.25)}
+.ctl button.done{color:var(--ok);border-color:var(--ok)}
+.ctl button:disabled{opacity:.4;cursor:not-allowed}
+.ctl .arrow{color:var(--mute);font-weight:700}
+.ctl .reset{font-weight:600;color:var(--mute)}
+.ctl .reset.arm{background:var(--high);border-color:var(--high);color:#fff}
+#guide{display:none;grid-column:1/-1;background:var(--accent-soft);border:1px solid var(--accent);border-radius:16px;padding:14px 18px;font-size:18px}
+#guide b{font-weight:800}
+#guide small{display:block;color:var(--mute);font-size:15px;margin-top:4px}
+#guide .gbar{height:8px;background:var(--panel);border-radius:4px;overflow:hidden;margin-top:10px;max-width:520px}
+#guide .gbar i{display:block;height:100%;background:var(--accent)}
+#guide.ok{background:var(--panel);border-color:var(--line)}
 main{padding:16px max(18px,env(safe-area-inset-right)) 24px max(18px,env(safe-area-inset-left))}
 .view{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(320px,1fr);gap:16px}
 @media (max-width:900px){.view{grid-template-columns:1fr}}
@@ -101,12 +115,15 @@ svg{width:100%;height:auto;display:block}
     <button role="tab" aria-selected="false" data-v="calib">보정</button>
   </div>
   <div class="ctl" id="ctl">
-    <button data-c="baseline">기준선</button><button data-c="start" class="primary">시험 시작</button>
-    <button data-c="end">쉬는 시간</button><button data-c="reset">초기화</button>
+    <button data-c="baseline" id="bBase"><b>1</b>기준 측정</button><span class="arrow">→</span>
+    <button data-c="start" id="bStart"><b>2</b>시험 시작</button><span class="arrow">→</span>
+    <button data-c="end" id="bEnd"><b>3</b>쉬는 시간</button>
+    <button data-c="reset" id="bReset" class="reset">초기화</button>
   </div>
 </header>
 <main>
   <div class="view" id="watchView">
+    <div id="guide" role="status"></div>
     <div id="banner"></div>
     <section class="card">
       <div class="cardh"><h2>교실 배치도 · 누적 열지도</h2><span class="legend">0분<i></i>30분+</span></div>
@@ -168,7 +185,39 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let live=false, view="watch", pickId=null, pickZone=null, last=null;
 
-document.querySelectorAll("#ctl button").forEach(b=>b.onclick=()=>fetch("/control/"+b.dataset.c,{method:"POST"}).then(poll));
+let resetArm=null;
+document.querySelectorAll("#ctl button").forEach(b=>b.onclick=()=>{
+  if(b.dataset.c==="reset"&&!resetArm){   // 초기화는 두 번 눌러야 (실수 방지, 팝업 대신)
+    b.classList.add("arm");b.textContent="한 번 더 누르면 초기화";
+    resetArm=setTimeout(()=>{b.classList.remove("arm");b.textContent="초기화";resetArm=null},3000);return;}
+  if(resetArm){clearTimeout(resetArm);resetArm=null;$("bReset").classList.remove("arm");$("bReset").textContent="초기화";}
+  fetch("/control/"+b.dataset.c,{method:"POST"}).then(poll);});
+const mmss=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+function renderSteps(s){
+  const b=s.base||{}, ph=s.phase, g=$("guide");
+  const set=(el,state,label)=>{el.className=state==="next"?"next":state==="done"?"done":"";el.disabled=state==="off";
+    el.innerHTML=`<b>${state==="done"?"✓":el.querySelector("b").textContent}</b>${label}`;};
+  const sensors=`센서 ${b.sensors??0}/4 정상`;
+  g.style.display="block"; g.className="";
+  if(ph==="대기"){
+    set($("bBase"),"next","기준 측정"); set($("bStart"),"off","시험 시작"); set($("bEnd"),"off","쉬는 시간");
+    g.innerHTML=`<b>① 시험 시작 전, [기준 측정]을 누르세요.</b><small>지금 잡히는 신호(감독관 태블릿, 건물 Wi-Fi 등)를 '원래 있던 신호'로 기록해 의심 대상에서 뺍니다. 대역 기기는 아직 끈 채로 두세요. · ${sensors}</small>`;
+  }else if(ph==="기준선"){
+    const ready=b.sec>=b.need, good=b.sec>=b.good;
+    set($("bBase"),"",`다시 측정`); set($("bStart"),ready?"next":"off",ready?"시험 시작":`시험 시작 (${b.need-b.sec}초 뒤)`); set($("bEnd"),"off","쉬는 시간");
+    g.innerHTML=`<b>기준 측정 중 ${mmss(b.sec||0)}</b> · 원래 있던 신호 <b>${b.ids||0}개</b> 기록 · ${sensors}`+
+      `<small>${good?"충분히 측정했어요. 대역 기기를 켜고 [시험 시작]을 누르세요.":ready?"시작할 수 있어요. 블루투스 기기까지 다 잡히려면 1분 이상을 권장해요.":`최소 ${b.need}초 동안 측정합니다.`}</small>`+
+      `<div class="gbar"><i style="width:${Math.min(100,100*(b.sec||0)/b.good)}%"></i></div>`;
+  }else if(ph==="시험 중"){
+    set($("bBase"),"done","기준 측정"); set($("bStart"),"done","시험 시작"); set($("bEnd"),"next","쉬는 시간");
+    g.className="ok";
+    g.innerHTML=`<b>시험 중 — 개입하지 않고 기록만 합니다.</b><small>원래 있던 신호 ${s.baseline_count||0}개 제외 중 · ${sensors} · 50분이 되면 자동으로 쉬는 시간</small>`;
+  }else{
+    set($("bBase"),"done","기준 측정"); set($("bStart"),"done","시험 시작"); set($("bEnd"),"done","쉬는 시간");
+    g.className="ok";
+    g.innerHTML=`<b>시험 기록을 저장했어요.</b><small>data/exams/ 에 저장 · 다음 시험은 [초기화] 후 ① 기준 측정부터</small>`;
+  }
+}
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>setView(b.dataset.v));
 function setView(v){view=v;
   document.querySelectorAll("#tabs button").forEach(b=>b.setAttribute("aria-selected",b.dataset.v===v));
@@ -178,8 +227,9 @@ function setView(v){view=v;
 function render(s){
   last=s; live=s.mode==="live";
   $("ctl").style.display=live?"flex":"none"; $("tabs").style.display=live?"flex":"none";
+  if(live)renderSteps(s); else $("guide").style.display="none";
   if(!live&&view!=="watch")setView("watch");
-  const ph=$("phase"); ph.textContent=s.phase;
+  const ph=$("phase"); ph.textContent=s.phase==="기준선"?"기준 측정 중":s.phase;
   ph.className="phase"+(s.phase==="시험 중"?" exam":s.phase==="쉬는 시간"?" break":"");
   $("clock").textContent=s.exam_min!=null?`${Math.floor(s.exam_min)}분 / ${s.exam_total}분`:"";
   $("prog").style.width=Math.min(100,100*(s.exam_min||0)/(s.exam_total||50))+"%";

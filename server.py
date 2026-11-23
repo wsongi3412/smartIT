@@ -6,7 +6,7 @@
 ② 실시간(ESP32 도착 후):
     python serial_reader.py data/live.csv    # 다른 터미널
     python server.py --live data/live.csv --calib data/calib_real.csv --scale 40
-    → 태블릿 화면의 버튼으로 [기준선] → [시험 시작] → [쉬는 시간]
+    → 태블릿 화면의 버튼으로 [① 기준 측정] → [② 시험 시작] → [③ 쉬는 시간] (순서대로만 눌림, 기준 측정 30초 이상)
     --scale 40 : 시연용 압축 (실제 1초 = 시험 40초, 약 75초면 50분)
     → 시험 전 [보정] 탭: 구역마다 비콘을 놓고 [기록 시작]/[기록 끝] → [지도에 반영]
 ③ 판넬 캡처용 고정 화면:
@@ -26,6 +26,9 @@ from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import sim
 from config import EXAM_MIN, SENSOR_IDS, INSIDE, CENTER, HALL, ALL_ZONES, MIN_SENSORS, hash_id
 from pipeline import Locator, analyze, load_rows, load_labels, windowize, WINDOW_S
+
+BASE_MIN_S = 30    # 기준 측정 최소 30초 (이보다 짧으면 [시험 시작] 잠김)
+BASE_GOOD_S = 60   # 1분 이상 권장 (BLE 기기는 광고 간격이 길어 늦게 잡힘)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 LEVEL_ORDER = {"높음": 0, "관찰": 1, "낮음": 2}
@@ -67,6 +70,8 @@ class State:
                 self.phase, self.start, self.end_at = "기준선", None, None
                 self.base_from = now
             elif cmd == "start":
+                if self.phase != "기준선" or now - self.base_from < BASE_MIN_S:   # ① 기준 측정 30초 이상 먼저
+                    return
                 self.phase, self.start = "시험 중", now
             elif cmd == "end":
                 if self.start is not None and self.end_at is None:
@@ -199,6 +204,14 @@ class State:
                 "recording": self.calib_cur and {"zone": self.calib_cur["zone"],
                                                  "sec": round(time.time() - self.calib_cur["t0"], 1)}}
 
+    def base_state(self, rows, sensor_age):
+        """① 기준 측정 진행 상황: 몇 초째인지, 신호 몇 개를 '원래 있던 신호'로 기록했는지, 센서 몇 대가 살아 있는지."""
+        ok = sum(1 for v in sensor_age.values() if v is not None and v < 10)
+        if self.phase == "기준선":
+            return {"sec": round(time.time() - self.base_from), "ids": len({r[3] for r in rows}),
+                    "sensors": ok, "need": BASE_MIN_S, "good": BASE_GOOD_S}
+        return {"sec": None, "ids": None, "sensors": ok, "need": BASE_MIN_S, "good": BASE_GOOD_S}
+
     def tick(self):
         a = self.a
         if a.live:
@@ -257,7 +270,8 @@ class State:
                 "baseline_count": sum(1 for s in sig if s["baseline"]),
                 "sensor_age": sensor_age, "updated": time.strftime("%H:%M:%S"),
                 "heat": {k: round(v, 1) for k, v in heat.items()},
-                "calib": self.calib_state() if a.live else None}
+                "calib": self.calib_state() if a.live else None,
+                "base": self.base_state(rows, sensor_age) if a.live else None}
         with self.lock:
             self.snapshot = snap
 
