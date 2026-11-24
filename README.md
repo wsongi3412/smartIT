@@ -236,7 +236,7 @@ smartIT/
 |---|---|---|---|
 | 센서 A~D | 4 | 보조배터리 각 1개 (또는 USB 충전기) | `esp32_sensor` |
 | 수신기 | 1 | 노트북 USB | `esp32_gateway` |
-| 비콘 | 1 | 보조배터리 | `esp32_beacon` |
+| 비콘 (측정용) | 0 | — | ESP32-CAM을 **측정 모드**로 (`esp32cam_glasses`의 `MEASURE_MODE 1`). 여분 ESP32가 있으면 `esp32_beacon` 도 됨 |
 | ESP32-CAM (카메라·AI 안경) | 2 | 보조배터리 | 예제 / `esp32cam_glasses` |
 
 - 보조배터리는 **전류가 적으면 스스로 꺼지는 제품**이 있습니다. 사기 전에 ESP32를 꽂고 30분 이상 켜져 있는지 확인 (비콘이 특히 전류가 적음).
@@ -250,7 +250,7 @@ smartIT/
    - 센서를 USB로 꽂은 채로 시리얼 모니터에 줄이 찍히는지 먼저 보고 → USB를 빼고 보조배터리로 → **수신기** 시리얼에 `A,BLE,...` 줄이 찍히면 성공
 4. 나머지 3대도 같은 방법. `pip install pyserial` → `python serial_reader.py data/live.csv --ports <수신기 포트>` → 4대 모두 들어오는지
    - 수신기가 10초마다 `# 10s A:20 B:19 C:20 D:20 lost A:0 ...` 을 찍습니다 (센서별 받은 패킷 / 빠진 패킷). D가 0이면 그 센서 전원·채널 확인
-5. 비콘용 ESP32에 `firmware/esp32_beacon` → 시리얼 모니터에서 비콘 주소 확인
+5. **측정용 비콘**: ESP32-CAM에 `esp32cam_glasses` 를 `MEASURE_MODE 1` 로 올림 → 시리얼(115200)의 `MEASURE BLE .. WIFI ..` 주소를 `stage_log.py --id` 에 (BLE 바퀴 = BLE 주소, Wi-Fi 바퀴 = WIFI 주소). 측정이 끝나면 `0` 으로 다시 올려 시연용 AI 안경으로
 6. **에어팟·버즈 1분 확인**: 케이스 열고 음악 재생 → 새 주소가 계속 잡히는지 (안 보이면 비콘으로 대체)
 7. **신호 지도 1일차**: `python stage_log.py data/calib_day1.csv --id <비콘 주소>` → 25자리 전부 + 복도 4곳, 자리당 6초 이상 (`docs/동현_측정/1_측정자리_평면도.md`)
 8. **다른 날 2일차** 측정 → `python evaluate.py --calib-train data/calib_day1.csv --calib-test data/calib_day2.csv` → **진짜 수치**

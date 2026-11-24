@@ -8,6 +8,12 @@
     3) 10분마다 MAC 주소를 새로 바꿈 (재부팅)   → 주소를 주기적으로 바꾸는 실제 기기
        (AI가 "주소가 바뀌어도 같은 자리의 같은 기기"로 이어 붙이는지 실기로 시험)
 
+  ★ 측정 모드 (MEASURE_MODE 1, 11-25): 신호 지도 측정 때 '비콘' 대신 쓴다 → ESP32 비콘을 따로 안 사도 됨.
+     - 주소(MAC)를 바꾸지 않음 → stage_log.py --id 로 계속 따라갈 수 있음
+     - BLE 광고 계속 + Wi-Fi는 30초마다가 아니라 0.1초마다 작은 패킷 → 자리마다 BLE·Wi-Fi 둘 다 고르게 잡힘
+     - 3초마다 시리얼에 "MEASURE BLE xx:.. WIFI xx:.." 출력 → BLE 바퀴는 BLE 주소, Wi-Fi 바퀴는 WIFI 주소를 --id 에
+     시험 연출·시연 때는 다시 0으로 올린다.
+
   업로드: Arduino IDE → 보드 "AI Thinker ESP32-CAM", ESP32-CAM-MB 보드에 꽂아 USB 연결.
   설정: 아래 WIFI_SSID / WIFI_PASS 를 시연용 핫스팟으로 바꾸기 (센서 펌웨어 WIFI_CH 와 같은 채널).
   시리얼(115200)에 현재 MAC과 버스트 기록이 찍힌다. → 연출 정답 CSV 에 이 MAC 을 적는다.
@@ -24,11 +30,16 @@
 #endif
 
 // ---------- 설정 ----------
+#define MEASURE_MODE   0      // ← 1 = 신호 지도 측정용 (비콘 대신), 0 = AI 안경 흉내 (시연)
 const char* WIFI_SSID = "ExamSentry-Hotspot";   // ← 시연 핫스팟 이름
 const char* WIFI_PASS = "change-me";            // ← 비밀번호
 #define BURST_EVERY_S  30     // 몇 초마다 사진을 보낼지
 #define BURST_MS       3000   // 한 번에 몇 ms 동안 몰아 보낼지
+#if MEASURE_MODE
+#define ROTATE_MIN     0      // 측정 모드: 주소 고정
+#else
 #define ROTATE_MIN     10     // 몇 분마다 MAC을 바꿀지 (0 = 안 바꿈)
+#endif
 #define UDP_PORT       5005   // 받는 쪽이 없어도 됨. 공중에 Wi-Fi 데이터 프레임이 나가는 게 목적
 
 // ---------- AI-Thinker ESP32-CAM 핀 ----------
@@ -130,6 +141,26 @@ void setup() {
 }
 
 void loop() {
+#if MEASURE_MODE
+  static uint32_t lastPkt = 0, lastPrint = 0;
+  if (WiFi.status() == WL_CONNECTED && millis() - lastPkt >= 100) {   // 0.1초마다 작은 Wi-Fi 데이터 프레임
+    udp.beginPacket(WiFi.broadcastIP(), UDP_PORT);
+    udp.write(dummy, 200);
+    udp.endPacket();
+    lastPkt = millis();
+  }
+  if (millis() - lastPrint >= 3000) {
+    Serial.printf("MEASURE BLE %s WIFI %s %s\n", BLEDevice::getAddress().toString().c_str(),
+                  WiFi.macAddress().c_str(), WiFi.status() == WL_CONNECTED ? "" : "(wifi NOT connected)");
+    lastPrint = millis();
+  }
+  if (WiFi.status() != WL_CONNECTED) {
+    static uint32_t lastTry = 0;
+    if (millis() - lastTry > 5000) { WiFi.reconnect(); lastTry = millis(); }
+  }
+  delay(10);
+  return;
+#endif
   if (millis() - lastBurst >= BURST_EVERY_S * 1000UL) {
     burst();
     lastBurst = millis();
