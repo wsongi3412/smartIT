@@ -29,6 +29,7 @@
 #define SENSOR_ID "A"     // ← 보드마다 변경
 #define WIFI_CH   6       // ← 시연 핫스팟 채널과 같게 (핫스팟 설정에서 채널 고정)
 #define BAUD      460800  // CH340 보드는 921600에서 글자가 깨짐 (11-25 실기 확인). serial_reader.py --baud 와 같게
+#define HOTSPOT_SSID "iPhone"   // ← 시연 핫스팟 이름. 켜질 때 이 핫스팟 채널을 찾아 맞춤 (아이폰: "호환성 최대화" 켜야 2.4GHz)
 #define SLOT_MS   1000
 #define MAXE      48      // 1초 동안 기억할 최대 기기 수
 // 수신기(esp32_gateway) 주소. 수신기 시리얼 첫 줄 "# gateway MAC ..." 을 보고 바꾸면 재전송까지 되어 더 안정적.
@@ -120,22 +121,41 @@ static void sniffer(void* buf, wifi_promiscuous_pkt_type_t type) {
   addPacket(addr2, p->rx_ctrl.rssi, type == WIFI_PKT_DATA);
 }
 
+// 켜질 때 핫스팟(HOTSPOT_SSID)을 찾아 그 채널로 맞춘다 (아이폰은 채널을 못 고름). 못 찾으면 WIFI_CH.
+static uint8_t wifiCh = WIFI_CH;
+static void findHotspotChannel() {
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  for (int tryN = 0; tryN < 3; tryN++) {
+    int n = WiFi.scanNetworks();
+    for (int i = 0; i < n; i++) {
+      if (WiFi.SSID(i) == HOTSPOT_SSID && WiFi.channel(i) <= 13) {
+        wifiCh = WiFi.channel(i);
+        Serial.printf("# hotspot '%s' found on ch %d\n", HOTSPOT_SSID, wifiCh);
+        WiFi.scanDelete();
+        return;
+      }
+    }
+    WiFi.scanDelete();
+  }
+  Serial.printf("# hotspot '%s' NOT found (2.4GHz?) -> ch %d\n", HOTSPOT_SSID, wifiCh);
+}
+
 void setup() {
   Serial.begin(BAUD);
   delay(300);
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
+  findHotspotChannel();
   wifi_promiscuous_filter_t filt = { .filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA };
   esp_wifi_set_promiscuous_filter(&filt);
   esp_wifi_set_promiscuous_rx_cb(&sniffer);
   esp_wifi_set_promiscuous(true);
-  esp_wifi_set_channel(WIFI_CH, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(wifiCh, WIFI_SECOND_CHAN_NONE);
   esp_wifi_set_promiscuous(false);
 
   if (esp_now_init() == ESP_OK) {
     esp_now_peer_info_t peer = {};
     memcpy(peer.peer_addr, GATEWAY_MAC, 6);
-    peer.channel = WIFI_CH;
+    peer.channel = wifiCh;
     peer.ifidx = WIFI_IF_STA;
     peer.encrypt = false;
     esp_now_add_peer(&peer);
@@ -149,7 +169,7 @@ void setup() {
   scan->setActiveScan(false);                              // 수동 스캔 (요청 패킷 안 보냄)
   scan->setInterval(100);
   scan->setWindow(99);
-  Serial.printf("# ExamSentry sensor %s ready, wifi ch %d, ESP-NOW -> %02x:%02x:%02x:%02x:%02x:%02x\n", SENSOR_ID, WIFI_CH,
+  Serial.printf("# ExamSentry sensor %s ready, wifi ch %d, ESP-NOW -> %02x:%02x:%02x:%02x:%02x:%02x\n", SENSOR_ID, wifiCh,
                 GATEWAY_MAC[0], GATEWAY_MAC[1], GATEWAY_MAC[2], GATEWAY_MAC[3], GATEWAY_MAC[4], GATEWAY_MAC[5]);
 }
 
@@ -159,7 +179,7 @@ void loop() {
   flush("BLE");
 
   esp_wifi_set_promiscuous(true);       // 1초 Wi-Fi
-  esp_wifi_set_channel(WIFI_CH, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(wifiCh, WIFI_SECOND_CHAN_NONE);
   delay(SLOT_MS);
   esp_wifi_set_promiscuous(false);
   flush("WIFI");

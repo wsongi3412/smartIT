@@ -17,6 +17,7 @@
 
 #define WIFI_CH 6     // ← 센서 펌웨어와 같게
 #define BAUD 460800   // serial_reader.py --baud 와 같게 (CH340 보드는 921600에서 깨짐)
+#define HOTSPOT_SSID "iPhone"   // ← 시연 핫스팟 이름. 켜질 때 이 핫스팟 채널을 찾아 맞춤 (아이폰: "호환성 최대화" 켜야 2.4GHz)
 
 struct __attribute__((packed)) Rec { uint8_t mac[6]; int8_t rssi; char frame; uint16_t n; };
 struct __attribute__((packed)) Pkt { uint8_t magic[2]; char sensor; char kind; uint8_t seq; uint8_t cnt; Rec r[24]; };
@@ -37,20 +38,39 @@ static void onRecv(const uint8_t* mac, const uint8_t* data, int len) {
   xQueueSend(q, &p, 0);   // 가득 차면 버림 (loop가 따라잡지 못한 경우)
 }
 
+// 켜질 때 핫스팟(HOTSPOT_SSID)을 찾아 그 채널로 맞춘다 (아이폰은 채널을 못 고름). 못 찾으면 WIFI_CH.
+static uint8_t wifiCh = WIFI_CH;
+static void findHotspotChannel() {
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  for (int tryN = 0; tryN < 3; tryN++) {
+    int n = WiFi.scanNetworks();
+    for (int i = 0; i < n; i++) {
+      if (WiFi.SSID(i) == HOTSPOT_SSID && WiFi.channel(i) <= 13) {
+        wifiCh = WiFi.channel(i);
+        Serial.printf("# hotspot '%s' found on ch %d\n", HOTSPOT_SSID, wifiCh);
+        WiFi.scanDelete();
+        return;
+      }
+    }
+    WiFi.scanDelete();
+  }
+  Serial.printf("# hotspot '%s' NOT found (2.4GHz?) -> ch %d\n", HOTSPOT_SSID, wifiCh);
+}
+
 void setup() {
   Serial.begin(BAUD);
   delay(300);
   q = xQueueCreate(64, sizeof(Pkt));
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect();
+  findHotspotChannel();
   esp_wifi_set_promiscuous(true);                       // 채널 고정용
-  esp_wifi_set_channel(WIFI_CH, WIFI_SECOND_CHAN_NONE);
+  esp_wifi_set_channel(wifiCh, WIFI_SECOND_CHAN_NONE);
   esp_wifi_set_promiscuous(false);
   if (esp_now_init() != ESP_OK) {
     Serial.println("# ESP-NOW 시작 실패");
   }
   esp_now_register_recv_cb(onRecv);
-  Serial.printf("# gateway MAC %s, wifi ch %d\n", WiFi.macAddress().c_str(), WIFI_CH);
+  Serial.printf("# gateway MAC %s, wifi ch %d\n", WiFi.macAddress().c_str(), wifiCh);
 }
 
 void loop() {
