@@ -17,11 +17,11 @@ import time
 import numpy as np
 
 import sim
-from config import ROOM_W, ROOM_D, HALL_D, hash_id
+from config import ROOM_W, ROOM_D, HALL_D, hash_id, seat_xy
 
 
-CALIB_SPOTS = [("앞왼쪽", (200, 150)), ("앞오른쪽", (700, 150)), ("뒤왼쪽", (200, 470)),
-               ("뒤오른쪽", (700, 470)), ("가운데", (450, 300)), ("복도", (990, 300))]
+CALIB_SPOTS = [("앞왼쪽", seat_xy(2, 2)), ("앞오른쪽", seat_xy(2, 4)), ("뒤왼쪽", seat_xy(4, 2)),
+               ("뒤오른쪽", seat_xy(4, 4)), ("가운데", seat_xy(3, 3)), ("복도", (990, 300))]
 
 
 def calib_demo(rng, total, hold=10):
@@ -47,7 +47,7 @@ def scenario(rng, total):   # (예전 고정 시간표, 참고용)
         ({"id": "tablet-mac", "kind": "WIFI", "rate": 3, "pos": lambda t: hall, "data_ratio": 0.7}, 0, total),
         ({"id": "hotspot-mac", "kind": "WIFI", "rate": 10, "pos": lambda t: (ROOM_W + 90, ROOM_D * 0.3),
           "data_ratio": 0.1}, 0, total),
-        ({"id": "esp32cam-hidden", "kind": "WIFI", "rate": 8, "pos": lambda t: (720, 480), "data_ratio": 0.9},
+        ({"id": "esp32cam-hidden", "kind": "WIFI", "rate": 8, "pos": lambda t: seat_xy(4, 5), "data_ratio": 0.9},
          20, total),
         ({"id": "hall-walker", "kind": "BLE", "rate": 4,
           "pos": lambda t: (ROOM_W + 90, -100 + (ROOM_D + 200) * (t - 40) / 15)}, 40, 55),
@@ -71,7 +71,7 @@ def live_scenario(f, rng, url, after, auto_start):
     hall = (ROOM_W + HALL_D * 0.6, ROOM_D * 0.7)
     base = [{"id": "tablet-mac", "kind": "WIFI", "rate": 3, "pos": lambda t: hall, "data_ratio": 0.7},
             {"id": "hotspot-mac", "kind": "WIFI", "rate": 10, "pos": lambda t: (ROOM_W + 90, ROOM_D * 0.3), "data_ratio": 0.1}]
-    cam = {"id": "esp32cam-hidden", "kind": "WIFI", "rate": 8, "pos": lambda t: (720, 480), "data_ratio": 0.9}
+    cam = {"id": "esp32cam-hidden", "kind": "WIFI", "rate": 8, "pos": lambda t: seat_xy(4, 5), "data_ratio": 0.9}
     t0, k, es = time.time(), 0, None
     print("원래 있던 기기(태블릿·핫스팟) 켬. 태블릿에서 [① 기준 측정] → 30초 이상 → [② 시험 시작]을 누르세요.")
     while es is None or k < es + after:
@@ -79,7 +79,7 @@ def live_scenario(f, rng, url, after, auto_start):
             st = exam_started(url)
             if st or (st is None and auto_start and k >= auto_start):
                 es = k
-                print(f"  {k}s 시험 시작 확인 → +5초 숨긴 카메라, +25초 복도 통행")
+                print(f"  {k}s 시험 시작 확인 → +5초 숨긴 카메라(4줄 5열), +25초 복도 통행")
         rows = []
         for d in base:
             sim.emit(d, k, k + 1, rng, rows, sim.WALL_DB)

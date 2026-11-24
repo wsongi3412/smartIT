@@ -59,9 +59,12 @@ main{padding:16px max(18px,env(safe-area-inset-right)) 24px max(18px,env(safe-ar
 svg{width:100%;height:auto;display:block}
 .zone{fill:var(--room);stroke:var(--line);stroke-width:2}
 .heat{fill:var(--heat);pointer-events:none}
-.zb{fill:none;stroke:transparent;stroke-width:0;pointer-events:none}
-.zb.high{stroke:var(--high);stroke-width:8}
-.zb.watch{stroke:var(--watch);stroke-width:6;stroke-dasharray:14 8}
+.desk{fill:var(--panel);stroke:var(--line);stroke-width:2}
+.desk.mid{stroke-dasharray:7 5}
+.desk.high{stroke:var(--high);stroke-width:6;stroke-dasharray:none}
+.desk.watch{stroke:var(--watch);stroke-width:5;stroke-dasharray:12 6}
+.seatno{fill:var(--mute);font-size:15px;text-anchor:end;font-variant-numeric:tabular-nums}
+.zl{fill:var(--ink);font-size:22px;font-weight:700;text-anchor:middle;opacity:.8}
 .lbl{fill:var(--ink);font-size:28px;font-weight:700;text-anchor:middle;opacity:.8}
 .min{fill:var(--mute);font-size:22px;text-anchor:middle;font-variant-numeric:tabular-nums}
 .sensor{stroke:var(--panel);stroke-width:4}
@@ -74,6 +77,7 @@ svg{width:100%;height:auto;display:block}
 .sig.watch{border:2px solid var(--watch);background:var(--watch-bg)}
 .no{font-weight:800;font-size:22px;min-width:44px}
 .where{font-weight:800;font-size:20px}
+.where small{font-weight:600;font-size:15px;color:var(--mute)}
 .meta{grid-column:2/4;color:var(--mute);font-size:15px}
 .lv{font-weight:800;padding:4px 12px;border-radius:999px;font-size:15px;color:#fff}
 .lv.high{background:var(--high)}.lv.watch{background:var(--watch)}.lv.low{background:var(--low)}
@@ -127,22 +131,16 @@ svg{width:100%;height:auto;display:block}
     <div id="banner"></div>
     <section class="card">
       <div class="cardh"><h2>교실 배치도 · 누적 열지도</h2><span class="legend">0분<i></i>30분+</span></div>
-      <svg viewBox="0 0 1000 620" role="img" aria-label="교실 배치도와 구역별 누적 신호 시간 (복도는 오른쪽)">
-        <rect class="zone" x="40" y="70" width="375" height="250"/><rect class="heat" id="h-앞왼쪽" x="40" y="70" width="375" height="250" opacity="0"/>
-        <rect class="zone" x="415" y="70" width="375" height="250"/><rect class="heat" id="h-앞오른쪽" x="415" y="70" width="375" height="250" opacity="0"/>
-        <rect class="zone" x="40" y="320" width="375" height="250"/><rect class="heat" id="h-뒤왼쪽" x="40" y="320" width="375" height="250" opacity="0"/>
-        <rect class="zone" x="415" y="320" width="375" height="250"/><rect class="heat" id="h-뒤오른쪽" x="415" y="320" width="375" height="250" opacity="0"/>
+      <svg viewBox="0 0 1000 650" role="img" aria-label="교실 5×5 자리 배치도와 구역별 누적 신호 시간 (복도는 오른쪽)">
+        <rect class="zone" x="40" y="70" width="750" height="500" rx="4"/>
         <rect class="zone" x="822" y="70" width="152" height="500" rx="8"/>
-        <rect class="zb" id="b-앞왼쪽" x="44" y="74" width="367" height="242"/><rect class="zb" id="b-앞오른쪽" x="419" y="74" width="367" height="242"/>
-        <rect class="zb" id="b-뒤왼쪽" x="44" y="324" width="367" height="242"/><rect class="zb" id="b-뒤오른쪽" x="419" y="324" width="367" height="242"/>
-        <ellipse class="zone" style="stroke-width:2" cx="415" cy="320" rx="106" ry="70"/><ellipse class="heat" id="h-가운데" cx="415" cy="320" rx="106" ry="70" opacity="0"/>
-        <ellipse class="zb" id="b-가운데" cx="415" cy="320" rx="102" ry="66"/>
-        <text class="lbl" x="415" y="48" style="font-size:24px;font-weight:600">칠판</text>
-        <text class="lbl" x="227" y="145">앞왼쪽</text><text class="min" id="m-앞왼쪽" x="227" y="177"></text>
-        <text class="lbl" x="602" y="145">앞오른쪽</text><text class="min" id="m-앞오른쪽" x="602" y="177"></text>
-        <text class="lbl" x="227" y="525">뒤왼쪽</text><text class="min" id="m-뒤왼쪽" x="227" y="557"></text>
-        <text class="lbl" x="602" y="525">뒤오른쪽</text><text class="min" id="m-뒤오른쪽" x="602" y="557"></text>
-        <text class="lbl" x="415" y="314" style="font-size:24px">가운데</text><text class="min" id="m-가운데" x="415" y="342"></text>
+        <g id="desks"></g>
+        <text class="lbl" x="415" y="42" style="font-size:24px;font-weight:600">칠판</text>
+        <text class="zl" x="190" y="34">앞왼쪽</text><text class="min" id="m-앞왼쪽" x="190" y="58"></text>
+        <text class="zl" x="640" y="34">앞오른쪽</text><text class="min" id="m-앞오른쪽" x="640" y="58"></text>
+        <text class="zl" x="190" y="604">뒤왼쪽</text><text class="min" id="m-뒤왼쪽" x="190" y="630"></text>
+        <text class="zl" x="415" y="604">가운데 (3줄·3열)</text><text class="min" id="m-가운데" x="415" y="630"></text>
+        <text class="zl" x="640" y="604">뒤오른쪽</text><text class="min" id="m-뒤오른쪽" x="640" y="630"></text>
         <text class="lbl" x="898" y="120" style="font-size:26px">복도</text><text class="min" x="898" y="150" style="font-size:18px">시험장 밖</text>
         <text class="min" id="m-복도" x="898" y="545" style="font-size:18px"></text>
         <g id="dots"></g>
@@ -179,10 +177,15 @@ svg{width:100%;height:auto;display:block}
 </main>
 <script>
 const ZONES=["앞왼쪽","앞오른쪽","뒤왼쪽","뒤오른쪽","가운데","복도"];
-const ZC={"앞왼쪽":[227,240],"앞오른쪽":[602,240],"뒤왼쪽":[227,430],"뒤오른쪽":[602,430],"가운데":[415,395],"복도":[898,230],"보류":[415,250]};
+const ZC={"앞왼쪽":[190,170],"앞오른쪽":[640,170],"뒤왼쪽":[190,470],"뒤오른쪽":[640,470],"가운데":[415,320],"복도":[898,230],"보류":[415,220]};
+// 5×5 자리: 칸 150×100 (모형 180×120mm), 가운데 = 3줄 전체 + 3열 전체 (config.seat_zone 과 같게)
+const seatZone=(r,c)=>r===3||c===3?"가운데":(r<3?"앞":"뒤")+(c<3?"왼쪽":"오른쪽");
 const SP={A:[40,70],B:[790,70],C:[40,570],D:[790,570]};
 const CLS={"높음":"high","관찰":"watch","낮음":"low"};
 const $=id=>document.getElementById(id);
+(function(){let h="";for(let r=1;r<=5;r++)for(let c=1;c<=5;c++){const z=seatZone(r,c),x=52+(c-1)*150,y=84+(r-1)*100;
+  h+=`<rect class="desk${z==="가운데"?" mid":""}" data-z="${z}" x="${x}" y="${y}" width="126" height="72" rx="8"/><rect class="heat" data-hz="${z}" x="${x}" y="${y}" width="126" height="72" rx="8" opacity="0"/><text class="seatno" x="${x+118}" y="${y+64}">${r}-${c}</text>`}
+  $("desks").innerHTML=h})();
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 let live=false, view="watch", pickId=null, pickZone=null, last=null;
 
@@ -236,14 +239,14 @@ function render(s){
   $("prog").style.width=Math.min(100,100*(s.exam_min||0)/(s.exam_total||50))+"%";
   const sig=s.signals||[], br=s.phase==="쉬는 시간", heat=s.heat||{};
   // 누적 열지도: 구역별 누적 분 → 진하기 (30분이면 최대)
-  ZONES.forEach(z=>{const m=heat[z]||0, h=$("h-"+z), t=$("m-"+z);
-    if(h)h.setAttribute("opacity",(Math.min(1,m/30)*0.55).toFixed(2));
+  ZONES.forEach(z=>{const m=heat[z]||0, t=$("m-"+z);
+    document.querySelectorAll(`[data-hz="${z}"]`).forEach(h=>h.setAttribute("opacity",(Math.min(1,m/30)*0.55).toFixed(2)));
     if(t)t.textContent=z==="복도"?(m?`지나감 ${m}개`:""):(m>=0.5?`누적 ${Math.round(m)}분`:"");});
   // 등급 테두리
-  document.querySelectorAll(".zb").forEach(z=>z.setAttribute("class","zb"));
+  document.querySelectorAll(".desk").forEach(d=>d.classList.remove("high","watch"));
   const zl={};
   sig.forEach(x=>{const r=x.level==="높음"?2:x.level==="관찰"?1:0;if(r>(zl[x.near]||0))zl[x.near]=r});
-  for(const [z,r] of Object.entries(zl)){const el=$("b-"+z);if(el&&r)el.setAttribute("class","zb "+(r===2?"high":"watch"))}
+  for(const [z,r] of Object.entries(zl))if(r)document.querySelectorAll(`.desk[data-z="${z}"]`).forEach(d=>d.classList.add(r===2?"high":"watch"));
   // 신호 점
   const shown=sig.filter(x=>x.level!=="낮음"||x.active), cnt={};
   $("dots").innerHTML=shown.map(x=>{const c=ZC[x.near]||ZC["보류"];const k=cnt[x.near]=(cnt[x.near]||0)+1;
@@ -263,7 +266,7 @@ function render(s){
   $("list").innerHTML=(top.length?top.map(x=>`
     <div class="sig ${CLS[x.level]}">
       <span class="no">#${x.no}</span>
-      <span class="where">${esc(x.near)} 부근</span>
+      <span class="where">${esc(x.near)} 부근${x.seats?` <small>${esc(x.seats)}</small>`:""}</span>
       <span class="lv ${CLS[x.level]}">${x.level}</span>
       <span class="meta">${x.kind==="WIFI"?"Wi-Fi":"BLE"} · ${esc(x.why)}${x.macs>1?` · MAC ${x.macs}번 바뀜`:""}${x.active?"":" · 지금은 안 잡힘"}</span>
     </div>`).join(""):`<div class="quiet">${s.phase==="시험 중"?"아직 의심 신호 없음":"표시할 신호 없음"}</div>`)
@@ -271,7 +274,7 @@ function render(s){
   $("foot").innerHTML=`시험 전 기준선 신호 ${s.baseline_count||0}개 제외 · 갱신 ${esc(s.updated||"")}`+(s.error?` · <span class="err">오류: ${esc(s.error)}</span>`:"");
   const hi=sig.filter(x=>x.level==="높음");
   $("banner").style.display=br&&hi.length?"block":"none";
-  if(br&&hi.length)$("banner").innerHTML="쉬는 시간입니다. 확인할 곳: "+hi.map(x=>`<b>${esc(x.near)} 부근</b> (#${x.no}, 교실 안 ${Math.round(x.minutes)}분)`).join(", ");
+  if(br&&hi.length)$("banner").innerHTML="쉬는 시간입니다. 확인할 곳: "+hi.map(x=>`<b>${esc(x.near)} 부근${x.seats?` (${esc(x.seats)})`:""}</b> (#${x.no}, 교실 안 ${Math.round(x.minutes)}분)`).join(", ");
   renderCalib(s.calib);
 }
 

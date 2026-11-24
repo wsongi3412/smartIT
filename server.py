@@ -24,7 +24,7 @@ import time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 
 import sim
-from config import EXAM_MIN, SENSOR_IDS, INSIDE, CENTER, HALL, ALL_ZONES, MIN_SENSORS, hash_id
+from config import seats_text, EXAM_MIN, SENSOR_IDS, INSIDE, CENTER, HALL, ALL_ZONES, MIN_SENSORS, hash_id
 from pipeline import Locator, analyze, load_rows, load_labels, windowize, WINDOW_S
 
 BASE_MIN_S = 30    # 기준 측정 최소 30초 (이보다 짧으면 [시험 시작] 잠김)
@@ -254,7 +254,7 @@ class State:
             key = s["ids"][0]
             if key not in self.numbers:
                 self.numbers[key] = len(self.numbers) + 1
-            show.append({"no": self.numbers[key], "kind": s["kind"], "near": s["near"], "level": s["level"],
+            show.append({"no": self.numbers[key], "kind": s["kind"], "near": s["near"], "seats": seats_text(s["near"]), "level": s["level"],
                          "why": s["why"], "minutes": s["minutes"], "inside": s["inside"],
                          "macs": len(s["ids"]), "active": (now - s["last_t"]) < 10})
         show.sort(key=lambda x: (LEVEL_ORDER[x["level"]], x["no"]))

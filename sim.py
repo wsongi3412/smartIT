@@ -17,7 +17,8 @@ import argparse
 import csv
 import numpy as np
 from config import (ROOM_W, ROOM_D, HALL_D, SENSOR_H, DEVICE_H, SENSORS, SENSOR_IDS,
-                    ALL_ZONES, INSIDE, HALL, zone_of)
+                    ALL_ZONES, INSIDE, HALL, zone_of,
+                    SEATS, ZONE_SEATS, seat_xy, seat_zone)
 
 TX_10CM = {"BLE": -48.0, "WIFI": -42.0}   # 10cm에서 세기 (가정)
 PATH_N = 2.2
@@ -57,7 +58,23 @@ def emit(dev, t0, t1, rng, rows, wall_db):
                 rows.append((round(float(t), 3), s, dev["kind"], dev["id"], int(round(v)), frame, 1))
 
 
+def seat_point(rng, zone=None, seat=None):
+    """5×5 중 한 자리(구역 안에서 무작위)의 책상 위 한 점. → ((x, y), (줄, 열))"""
+    if seat is None:
+        cands = ZONE_SEATS[zone] if zone else SEATS
+        seat = cands[rng.integers(len(cands))]
+    x, y = seat_xy(*seat)
+    return (x + rng.uniform(-45, 45), y + rng.uniform(-25, 25)), seat
+
+
+def seat_name(seat):
+    return f"{seat[0]}줄 {seat[1]}열({seat_zone(*seat)})"
+
+
 def rand_point(zone, rng):
+    """보정 지점: 교실 안은 책상 위(자리), 복도는 복도 띠 아무 곳."""
+    if zone != HALL:
+        return seat_point(rng, zone)[0]
     while True:
         x = rng.uniform(20, ROOM_W + HALL_D - 20)
         y = rng.uniform(20, ROOM_D - 20)
@@ -116,8 +133,8 @@ def make_exam(seed, exam_min=50, baseline_s=120, wall_db=WALL_DB, variant=None):
          "data_ratio": 0.0}, -baseline_s, end, "낮음", "건물 AP(기준선)")
 
     # 숨긴 기기
-    zone = rng.choice(INSIDE)
-    p = rand_point(zone, rng)
+    p, seat = seat_point(rng)          # 25자리 중 아무 곳
+    zone = seat_name(seat)
     start = rng.uniform(2, 15) * 60
     if variant == "cam":
         add({"id": rand_mac(rng), "kind": "WIFI", "rate": 8, "pos": lambda t: p, "data_ratio": 0.9},
@@ -136,8 +153,8 @@ def make_exam(seed, exam_min=50, baseline_s=120, wall_db=WALL_DB, variant=None):
             t = t2 + rng.uniform(0.5, 3)
 
     # 짧게 켜졌다 꺼진 기기 → 관찰
-    z2 = rng.choice(INSIDE)
-    p2 = rand_point(z2, rng)
+    p2, s2_seat = seat_point(rng)
+    z2 = seat_name(s2_seat)
     s2 = rng.uniform(20, 40) * 60
     add({"id": rand_mac(rng), "kind": "BLE", "rate": 2, "pos": lambda t: p2}, s2, s2 + rng.uniform(3.5, 6) * 60,
         "관찰", f"짧게 켜진 BLE @{z2}")
@@ -165,7 +182,7 @@ def make_exam(seed, exam_min=50, baseline_s=120, wall_db=WALL_DB, variant=None):
 # ---------------- 어려운 경우 ----------------
 HARD_CASES = {
     "wall":   "복도 쪽(오른쪽) 벽 바로 앞 자리에 숨긴 BLE 이어폰 (복도와 헷갈림)",
-    "center": "한가운데 자리에 숨긴 Wi-Fi 카메라 (네 센서 거리가 비슷)",
+    "center": "한가운데(3줄 3열) 자리에 숨긴 Wi-Fi 카메라 (네 센서 거리가 비슷)",
     "two":    "숨긴 기기 2개 동시 (이어폰 + 카메라, 다른 자리)",
     "hall":   "벽 바로 밖 복도에 시험 내내 서 있는 사람 (높음이 뜨면 안 됨)",
 }
@@ -194,16 +211,18 @@ def make_hard(seed, case, exam_min=50, baseline_s=120, wall_db=WALL_DB):
 
     start = rng.uniform(2, 10) * 60
     if case == "wall":
-        p = (ROOM_W - rng.uniform(15, 60), rng.uniform(100, ROOM_D - 100))   # 오른쪽 벽에서 1.5~6cm(실제 15~60cm)
+        seat = (int(rng.integers(1, 6)), 5)                                   # 5열 = 복도 쪽 벽 자리
+        p = (ROOM_W - rng.uniform(15, 60), seat_xy(*seat)[1] + rng.uniform(-25, 25))   # 벽에서 1.5~6cm(실제 15~60cm)
         add({"id": rand_mac(rng), "kind": "BLE", "rate": 2, "pos": lambda t: p}, start, end,
-            "높음", f"복도 쪽 벽 앞 BLE 이어폰 @{zone_of(*p)}")
+            "높음", f"복도 쪽 벽 앞 BLE 이어폰 @{seat_name(seat)}")
     elif case == "center":
-        p = (ROOM_W / 2 + rng.normal(0, 25), ROOM_D / 2 + rng.normal(0, 20))
+        p, _ = seat_point(rng, seat=(3, 3))
         add({"id": rand_mac(rng), "kind": "WIFI", "rate": 8, "pos": lambda t: p, "data_ratio": 0.9},
-            start, end, "높음", "가운데 Wi-Fi 카메라")
+            start, end, "높음", "3줄 3열(한가운데) Wi-Fi 카메라")
     elif case == "two":
-        z1, z2 = rng.choice(INSIDE, 2, replace=False)
-        p1, p2 = rand_point(z1, rng), rand_point(z2, rng)
+        z1, z2 = rng.choice(INSIDE, 2, replace=False)     # 서로 다른 모서리 구역
+        (p1, a), (p2, b) = seat_point(rng, z1), seat_point(rng, z2)
+        z1, z2 = seat_name(a), seat_name(b)
         add({"id": rand_mac(rng), "kind": "BLE", "rate": 2, "pos": lambda t: p1}, start, end,
             "높음", f"BLE 이어폰 @{z1}")
         add({"id": rand_mac(rng), "kind": "WIFI", "rate": 8, "pos": lambda t: p2, "data_ratio": 0.9},

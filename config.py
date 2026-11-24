@@ -3,6 +3,8 @@
 좌표: 칠판 쪽 벽이 y=0, 뒤쪽 벽이 y=ROOM_D, 왼쪽 벽 x=0, 오른쪽 벽 x=ROOM_W.
 복도는 오른쪽 벽 바깥(x > ROOM_W). (11-23: 실제 시험장은 대부분 복도가 오른쪽이라 뒤쪽에서 옮김)
 센서: A 앞왼쪽, B 앞오른쪽, C 뒤왼쪽, D 뒤오른쪽 모서리 기둥.
+자리: 수능 시험실처럼 5×5 = 25자리. "r줄 c열" (1줄 = 칠판 쪽, 5열 = 복도 쪽).
+  구역 = 모서리 2×2 네 곳(4자리씩) + 가운데 십자(3줄 전체 + 3열 전체, 9자리). (11-24)
 """
 import hashlib
 
@@ -15,21 +17,58 @@ DEVICE_H = 40                  # 책상 위 기기 높이
 SENSORS = {"A": (0, 0), "B": (ROOM_W, 0), "C": (0, ROOM_D), "D": (ROOM_W, ROOM_D)}
 SENSOR_IDS = list(SENSORS)
 
+# ---- 자리 (5×5) ----
+SEAT_ROWS, SEAT_COLS = 5, 5
+CELL_W, CELL_D = ROOM_W / SEAT_COLS, ROOM_D / SEAT_ROWS     # 한 자리 칸 180 × 120
+MID_ROW, MID_COL = 3, 3
+
+
+def seat_xy(r, c):
+    """r줄 c열 자리(1부터)의 책상 가운데 좌표."""
+    return ((c - 0.5) * CELL_W, (r - 0.5) * CELL_D)
+
+
+def seat_of(x, y):
+    """좌표 → (줄, 열). 교실 밖 좌표는 가장 가까운 자리로."""
+    r = min(SEAT_ROWS, max(1, int(y // CELL_D) + 1))
+    c = min(SEAT_COLS, max(1, int(x // CELL_W) + 1))
+    return r, c
+
+
+SEATS = [(r, c) for r in range(1, SEAT_ROWS + 1) for c in range(1, SEAT_COLS + 1)]
+
 INSIDE = ["앞왼쪽", "앞오른쪽", "뒤왼쪽", "뒤오른쪽"]
-CENTER = "가운데"              # 판정상 '보류'로 취급
+CENTER = "가운데"              # 3줄·3열 십자 9자리 (네 센서 거리가 비슷해 헷갈리는 자리)
 HALL = "복도"
 ALL_ZONES = INSIDE + [CENTER, HALL]
 HOLD = "보류"
 
 
+def seat_zone(r, c):
+    if r == MID_ROW or c == MID_COL:
+        return CENTER
+    return ("앞" if r < MID_ROW else "뒤") + ("왼쪽" if c < MID_COL else "오른쪽")
+
+
 def zone_of(x, y):
-    """좌표 → 정답 구역 (시뮬레이션·연출 기록용)."""
+    """좌표 → 정답 구역 (시뮬레이션·연출 기록용). 교실 안은 그 좌표가 속한 자리의 구역."""
     if x > ROOM_W:
         return HALL
-    cx, cy = ROOM_W / 2, ROOM_D / 2
-    if ((x - cx) / (ROOM_W * 0.14)) ** 2 + ((y - cy) / (ROOM_D * 0.14)) ** 2 <= 1:
-        return CENTER
-    return ("앞" if y < cy else "뒤") + ("왼쪽" if x < cx else "오른쪽")
+    return seat_zone(*seat_of(x, y))
+
+
+ZONE_SEATS = {z: [rc for rc in SEATS if seat_zone(*rc) == z] for z in INSIDE + [CENTER]}
+
+
+def seats_text(zone):
+    """구역 → 감독관이 볼 자리 안내. 예: '1·2줄 4·5열'"""
+    if zone == CENTER:
+        return f"{MID_ROW}줄 전체 + {MID_COL}열 전체"
+    if zone not in ZONE_SEATS:
+        return ""
+    rows = sorted({r for r, _ in ZONE_SEATS[zone]})
+    cols = sorted({c for _, c in ZONE_SEATS[zone]})
+    return f"{'·'.join(map(str, rows))}줄 {'·'.join(map(str, cols))}열"
 
 
 # ---- 1단계: 위치 판정 ----
