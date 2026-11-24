@@ -1,4 +1,7 @@
-"""ESP32 4대 → 노트북 USB 허브 → 이 스크립트 → CSV (pipeline/server 와 같은 형식).
+"""ESP32 센서 → (무선 ESP-NOW → 수신기 ESP32 1대, 또는 센서 USB 직접) → 이 스크립트 → CSV.
+
+11-24: 센서는 보조배터리로 켜고 무선으로 보낸다. 노트북에는 수신기(firmware/esp32_gateway) 1대만 꽂는다.
+       수신기가 센서 USB와 똑같은 줄을 출력하므로 이 스크립트는 그대로. '#' 상태 줄은 화면에만 보여 준다.
 
 ESP32 한 줄 출력:  A,BLE,aa:bb:cc:dd:ee:ff,-58,A,1     (센서,종류,주소,세기,프레임,패킷수)
 여기서 시각(t, 유닉스 초)을 붙이고 주소를 해시로 바꿔 저장한다. 패킷 내용은 받지도 저장하지도 않는다.
@@ -34,6 +37,8 @@ def read_port(port, out, baud):
                 print(f"[연결] {port}")
                 while True:
                     raw = ser.readline().decode(errors="ignore").strip()
+                    if raw.startswith("# 10s") or raw.startswith("# gateway"):
+                        print(f"  [수신기] {raw[2:]}")
                     p = raw.split(",")
                     if len(p) != 6 or p[0] not in SENSOR_IDS or p[1] not in ("BLE", "WIFI"):
                         continue          # 부팅 메시지 등 무시

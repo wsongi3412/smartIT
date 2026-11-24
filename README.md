@@ -4,7 +4,7 @@
 > 시험 시간 내내 AI로 분석해서, 시험장 밖 감독관 태블릿에 **"쉬는 시간에 ○○ 부근을 확인하세요"** 라고 알려 주는 시스템
 
 ```
- 숨긴 기기 ))) 📡 ESP32 센서 4대 ──USB──▶ 💻 노트북 (AI 분석) ──Wi-Fi──▶ 📱 감독관 태블릿
+ 숨긴 기기 ))) 📡 ESP32 센서 4대 (보조배터리) ··ESP-NOW 무선··▶ 📶 수신기 ESP32 ──USB──▶ 💻 노트북 (AI 분석) ──Wi-Fi──▶ 📱 감독관 태블릿
              (교실 네 모서리)                ① 어디 부근?  ② 얼마나 의심?     쉬는 시간에 확인
 ```
 
@@ -58,7 +58,8 @@ ESP32가 오면 입력만 진짜 센서로 바꾸면 됩니다. (데이터 형�
 | | 내용 |
 |---|---|
 | ✅ 돌려서 확인함 | AI 분석, 태블릿 화면, 가짜 데이터, 채점, 실시간 시연 리허설 |
-| ⏳ ESP32 와야 확인 | ESP32 펌웨어 3개 (**컴파일은 통과**, 보드에 올려 보기만 남음), USB 수집기, 신호 지도 기록기 |
+| ⏳ ESP32 와야 확인 | ESP32 펌웨어 4개 (**컴파일은 통과**, 보드에 올려 보기만 남음), 수집기, 신호 지도 기록기 |
+| 🆕 11/24 무선 | 센서는 **보조배터리로 켜고 무선(ESP-NOW)으로 전송**, 노트북에는 수신기 ESP32 1대만 꽂음 (`firmware/esp32_gateway`). 센서를 USB로 꽂아도 예전처럼 됨 |
 | 🆕 11/19 추가 | 대시보드 **누적 열지도**, **보정 탭**, 태블릿용 다듬기, 판넬 캡처(`docs/screens/`) |
 | 🆕 11/24 추가 | **수능 시험실처럼 5×5 = 25자리**. 구역 = 모서리 2×2 네 곳 + 가운데 십자(3줄·3열 9자리). 화면에 책상 25개, 알림에 "1·2줄 4·5열"처럼 자리 안내 |
 | 🆕 11/23 추가 | **복도를 오른쪽으로** 옮김 (실제 시험장 배치), 시험 순서 버튼 ①②③ |
@@ -173,7 +174,7 @@ smartIT/
 ├── run_all.py         ⭐  한 번에 돌리기: 위치 채점 → 시험 채점 → AI 학습 → 보고서·그림
 ├── server.py          📱  태블릿 화면 서버 (리플레이 · 실시간 · 압축 시연, 시험 끝나면 기록 자동 저장)
 ├── dashboard.html     📱  태블릿 화면 (배치도, 신호 목록, 쉬는 시간 배너, 센서 상태)
-├── serial_reader.py   🔌  [ESP32용] 센서 4대 USB → CSV 저장 (주소는 해시로)
+├── serial_reader.py   🔌  [ESP32용] 수신기(또는 센서 USB) → CSV 저장 (주소는 해시로)
 ├── stage_log.py       🔌  [ESP32용] 신호 지도 만들 때 "지금 어느 구역" 기록
 ├── sim.py             🧪  가짜 센서 데이터 만들기 (숨긴 기기, 복도 통행 등)
 ├── fake_live.py       🧪  가짜 ESP32 4대 (실시간 리허설용)
@@ -229,17 +230,33 @@ smartIT/
 
 ## 🛠 ESP32가 오면 할 일 (순서대로)
 
-1. Arduino IDE → 보드 매니저에서 **esp32 (Espressif) 3.3.x** 설치 → `firmware/esp32_sensor` 를 **1대에만** 올려서 시리얼 모니터에 줄이 찍히는지 확인
+**전원 구성 (11/24)**: 센서 4대는 **노트북에 연결하지 않고** 보조배터리(또는 콘센트 USB 충전기)로 켭니다. 데이터는 무선(ESP-NOW)으로 **수신기 ESP32 1대**에 모이고, 수신기만 노트북 USB에 꽂습니다.
+
+| 보드 | 개수 | 전원 | 펌웨어 |
+|---|---|---|---|
+| 센서 A~D | 4 | 보조배터리 각 1개 (또는 USB 충전기) | `esp32_sensor` |
+| 수신기 | 1 | 노트북 USB | `esp32_gateway` |
+| 비콘 | 1 | 보조배터리 | `esp32_beacon` |
+| ESP32-CAM (카메라·AI 안경) | 2 | 보조배터리 | 예제 / `esp32cam_glasses` |
+
+- 보조배터리는 **전류가 적으면 스스로 꺼지는 제품**이 있습니다. 사기 전에 ESP32를 꽂고 30분 이상 켜져 있는지 확인 (비콘이 특히 전류가 적음).
+- 센서 1대는 대략 0.1~0.15A. 10,000mAh 보조배터리면 시험 하루는 충분할 것으로 예상 (실측으로 확인).
+- ESP-NOW와 엿듣기는 **같은 채널(`WIFI_CH`)** 에서 동작합니다. 센서·수신기 펌웨어의 `WIFI_CH` 를 핫스팟 채널과 같게.
+
+1. Arduino IDE → 보드 매니저에서 **esp32 (Espressif) 3.3.x** 설치
+2. **수신기**: `firmware/esp32_gateway` 를 올리고 시리얼 모니터(921600)에서 첫 줄 `# gateway MAC xx:xx:...` 확인 → 적어 두기
+3. **센서 1대**: `firmware/esp32_sensor` 맨 위 `SENSOR_ID`(A/B/C/D), `WIFI_CH`, `GATEWAY_MAC`(2번 주소, 안 바꾸면 방송으로 보냄) 을 고쳐 올리기
    - ⚠️ 센서 펌웨어는 **툴 → Partition Scheme → "Huge APP (3MB No OTA/1MB SPIFFS)"** 로 바꿔야 들어갑니다 (기본 설정이면 '용량 초과' 오류)
-2. 코드 맨 위 `SENSOR_ID` 를 A/B/C/D로 바꿔 4대에 올리기. 핫스팟 채널을 고정하고 `WIFI_CH` 를 맞추기
-3. `pip install pyserial` → `python serial_reader.py data/live.csv` → 4대 모두 데이터가 들어오는지
-4. 여분 ESP32에 `firmware/esp32_beacon` → 시리얼 모니터에서 비콘 주소 확인
-5. **에어팟·버즈 1분 확인**: 케이스 열고 음악 재생 → 새 주소가 계속 잡히는지 (안 보이면 비콘으로 대체)
-6. **신호 지도 1일차**: `python stage_log.py data/calib_day1.csv --id <비콘 주소>` → 25자리 전부 + 복도 4곳, 자리당 6초 이상 (`docs/동현_측정/1_측정자리_평면도.md`)
-7. **다른 날 2일차** 측정 → `python evaluate.py --calib-train data/calib_day1.csv --calib-test data/calib_day2.csv` → **진짜 수치**
-8. 실시간: `python server.py --live data/live.csv --calib data/calib_day1.csv --scale 40`
-9. **시험 연출 기록**: 실시간 모드로 시험을 끝낼 때마다 `data/exams/exam_시각.csv` 가 자동 저장됩니다. 같이 생기는 `_truth.csv` 의 level 칸에 정답(높음/관찰/낮음)을 채우고, 1일차·2일차 폴더로 나눠 둡니다.
-10. **한 번에 채점**:
+   - 센서를 USB로 꽂은 채로 시리얼 모니터에 줄이 찍히는지 먼저 보고 → USB를 빼고 보조배터리로 → **수신기** 시리얼에 `A,BLE,...` 줄이 찍히면 성공
+4. 나머지 3대도 같은 방법. `pip install pyserial` → `python serial_reader.py data/live.csv --ports <수신기 포트>` → 4대 모두 들어오는지
+   - 수신기가 10초마다 `# 10s A:20 B:19 C:20 D:20 lost A:0 ...` 을 찍습니다 (센서별 받은 패킷 / 빠진 패킷). D가 0이면 그 센서 전원·채널 확인
+5. 비콘용 ESP32에 `firmware/esp32_beacon` → 시리얼 모니터에서 비콘 주소 확인
+6. **에어팟·버즈 1분 확인**: 케이스 열고 음악 재생 → 새 주소가 계속 잡히는지 (안 보이면 비콘으로 대체)
+7. **신호 지도 1일차**: `python stage_log.py data/calib_day1.csv --id <비콘 주소>` → 25자리 전부 + 복도 4곳, 자리당 6초 이상 (`docs/동현_측정/1_측정자리_평면도.md`)
+8. **다른 날 2일차** 측정 → `python evaluate.py --calib-train data/calib_day1.csv --calib-test data/calib_day2.csv` → **진짜 수치**
+9. 실시간: `python server.py --live data/live.csv --calib data/calib_day1.csv --scale 40`
+10. **시험 연출 기록**: 실시간 모드로 시험을 끝낼 때마다 `data/exams/exam_시각.csv` 가 자동 저장됩니다. 같이 생기는 `_truth.csv` 의 level 칸에 정답(높음/관찰/낮음)을 채우고, 1일차·2일차 폴더로 나눠 둡니다.
+11. **한 번에 채점**:
     ```bash
     python run_all.py --calib1 data/calib_day1.csv --calib2 data/calib_day2.csv \
                       --exams1 data/exams/day1 --exams2 data/exams/day2
@@ -253,6 +270,7 @@ smartIT/
 | 펌웨어 | 보드 선택 | 설정 | 용량 |
 |---|---|---|---|
 | `esp32_sensor` | ESP32 Dev Module | **Partition Scheme: Huge APP** | 52% |
+| `esp32_gateway` | ESP32 Dev Module | 기본 | 68% |
 | `esp32_beacon` | ESP32 Dev Module | 기본 | 83% |
 | `esp32cam_glasses` | AI Thinker ESP32-CAM | 기본 | 56% |
 
@@ -261,6 +279,7 @@ smartIT/
 arduino-cli config set board_manager.additional_urls https://espressif.github.io/arduino-esp32/package_esp32_index.json
 arduino-cli core update-index && arduino-cli core install esp32:esp32
 arduino-cli compile --fqbn esp32:esp32:esp32:PartitionScheme=huge_app firmware/esp32_sensor
+arduino-cli compile --fqbn esp32:esp32:esp32 firmware/esp32_gateway
 arduino-cli compile --fqbn esp32:esp32:esp32 firmware/esp32_beacon
 arduino-cli compile --fqbn esp32:esp32:esp32cam firmware/esp32cam_glasses
 ```

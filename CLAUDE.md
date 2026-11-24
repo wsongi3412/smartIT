@@ -25,6 +25,7 @@
 | 교실·복도 사이 벽에 알루미늄 테이프 필수 | 우드락만이면 복도→교실 오판 40%, 테이프 붙이면 8%. 발표에서 "벽을 흉내 냈다"고 밝힘 |
 | 위치 판정 = k-NN(k=5, 3표 이상), 상대값 + 가장 센 값 | 가장 센 값을 빼기만 하면 벽 감쇠 정보가 지워짐 |
 | 의심도는 기기 이름이 아니라 행동 특징만 사용 | 비싼 실제 기기 대신 싼 대역 기기로 학습해도 되게 |
+| 센서는 **보조배터리**로 켜고 **ESP-NOW 무선**으로 수신기 ESP32 1대(노트북 USB)에 보냄 | 실제 교실 설치 때 노트북까지 USB를 깔 수 없음 (11-24). 엿듣기와 같은 고정 채널 `WIFI_CH`. 센서끼리의 ESP-NOW 패킷은 엿듣기에서 뺌 |
 | MAC 주소는 해시로 저장, 패킷 내용은 저장 안 함 | 개인정보 |
 | 학습과 검증은 다른 날 측정 데이터로 | 같은 날 데이터로 재면 정확도가 부풀려짐 |
 | 발표에는 모형 실측 수치만 | 시뮬레이션 수치는 코드 확인용 |
@@ -36,13 +37,13 @@
 | 상태 | 파일 |
 |---|---|
 | 가짜 데이터로 실제 실행 확인 | `config.py` `pipeline.py` `server.py` `dashboard.html` `sim.py` `fake_live.py` `evaluate.py` `train_rf.py` `run_all.py` |
-| 컴파일만 통과 (보드에서 실행 전) | `firmware/esp32_sensor` (Partition Scheme: Huge APP 필요), `firmware/esp32_beacon`, `firmware/esp32cam_glasses` |
+| 컴파일만 통과 (보드에서 실행 전) | `firmware/esp32_sensor` (Partition Scheme: Huge APP 필요, 11-24 ESP-NOW 추가), `firmware/esp32_gateway` (11-24 새로), `firmware/esp32_beacon`, `firmware/esp32cam_glasses` |
 | ESP32 와야 확인 | `serial_reader.py`, `stage_log.py` |
 | 11-19 추가 (가짜 데이터·가짜 센서로 확인) | 대시보드 누적 열지도, 보정 탭(현장 신호 지도 보충), 태블릿용 큰 글씨·버튼, `server.py --at 분` 판넬 캡처 (`docs/screens/`) |
 | 11-22 추가 (가짜 데이터로 확인) | 어려운 경우 4종(`sim.make_hard`), 벽 근처 → '관찰' 규칙(`config.WALL_RATIO`), 가운데 부근 표시, `experiments/compare.py` → `docs/panel/` 판넬 그림·비교표. **송이의 ESP32 전 숙제 모두 완료** |
 | 11-24 추가 (가짜 데이터로 확인) | 5×5 자리(`config.SEATS`, `seat_zone`, `seats_text`), 가짜 기기를 책상 위에 둠, 대시보드 책상 25개 + 알림에 자리 안내. 동현 측정 문서도 `줄-열` 자리로 수정 |
 
-ESP32 부품은 **아직 주문 전**. 실측 데이터 없음.
+ESP32 **11-24 도착** (보드에 올려 보기 전). 실측 데이터 없음. 수신기용 ESP32 1대가 더 필요 (센서 4 + 수신기 1 + 비콘 1 = 6대).
 
 ## 역할
 
