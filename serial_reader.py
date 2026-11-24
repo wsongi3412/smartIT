@@ -59,7 +59,7 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("out")
     ap.add_argument("--ports", nargs="*")
-    ap.add_argument("--baud", type=int, default=921600)
+    ap.add_argument("--baud", type=int, default=460800)
     a = ap.parse_args()
     ports = a.ports or find_ports()
     if not ports:

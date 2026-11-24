@@ -16,6 +16,7 @@
 #include <esp_now.h>
 
 #define WIFI_CH 6     // ← 센서 펌웨어와 같게
+#define BAUD 460800   // serial_reader.py --baud 와 같게 (CH340 보드는 921600에서 깨짐)
 
 struct __attribute__((packed)) Rec { uint8_t mac[6]; int8_t rssi; char frame; uint16_t n; };
 struct __attribute__((packed)) Pkt { uint8_t magic[2]; char sensor; char kind; uint8_t seq; uint8_t cnt; Rec r[24]; };
@@ -37,7 +38,7 @@ static void onRecv(const uint8_t* mac, const uint8_t* data, int len) {
 }
 
 void setup() {
-  Serial.begin(921600);
+  Serial.begin(BAUD);
   delay(300);
   q = xQueueCreate(64, sizeof(Pkt));
   WiFi.mode(WIFI_STA);

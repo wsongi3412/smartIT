@@ -15,7 +15,8 @@
   패킷 내용(payload)은 읽지 않는다. 주소와 세기만 본다.
 
   보드마다 SENSOR_ID 를 A(앞왼쪽) B(앞오른쪽) C(뒤왼쪽) D(뒤오른쪽) 로 바꿔서 업로드.
-  보드레이트 921600 (serial_reader.py 기본값과 같음).
+  보드레이트 BAUD=460800 (serial_reader.py 기본값과 같음). CH340 보드는 921600에서 글자가 깨짐.
+  업로드가 "No more data to read" 로 실패하면 툴 → Upload Speed → 460800 (또는 115200).
 */
 #include <Arduino.h>
 #include <WiFi.h>
@@ -27,6 +28,7 @@
 
 #define SENSOR_ID "A"     // ← 보드마다 변경
 #define WIFI_CH   6       // ← 시연 핫스팟 채널과 같게 (핫스팟 설정에서 채널 고정)
+#define BAUD      460800  // CH340 보드는 921600에서 글자가 깨짐 (11-25 실기 확인). serial_reader.py --baud 와 같게
 #define SLOT_MS   1000
 #define MAXE      48      // 1초 동안 기억할 최대 기기 수
 // 수신기(esp32_gateway) 주소. 수신기 시리얼 첫 줄 "# gateway MAC ..." 을 보고 바꾸면 재전송까지 되어 더 안정적.
@@ -119,7 +121,7 @@ static void sniffer(void* buf, wifi_promiscuous_pkt_type_t type) {
 }
 
 void setup() {
-  Serial.begin(921600);
+  Serial.begin(BAUD);
   delay(300);
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();

@@ -244,7 +244,7 @@ smartIT/
 - ESP-NOW와 엿듣기는 **같은 채널(`WIFI_CH`)** 에서 동작합니다. 센서·수신기 펌웨어의 `WIFI_CH` 를 핫스팟 채널과 같게.
 
 1. Arduino IDE → 보드 매니저에서 **esp32 (Espressif) 3.3.x** 설치
-2. **수신기**: `firmware/esp32_gateway` 를 올리고 시리얼 모니터(921600)에서 첫 줄 `# gateway MAC xx:xx:...` 확인 → 적어 두기
+2. **수신기**: `firmware/esp32_gateway` 를 올리고 시리얼 모니터(460800)에서 첫 줄 `# gateway MAC xx:xx:...` 확인 → 적어 두기
 3. **센서 1대**: `firmware/esp32_sensor` 맨 위 `SENSOR_ID`(A/B/C/D), `WIFI_CH`, `GATEWAY_MAC`(2번 주소, 안 바꾸면 방송으로 보냄) 을 고쳐 올리기
    - ⚠️ 센서 펌웨어는 **툴 → Partition Scheme → "Huge APP (3MB No OTA/1MB SPIFFS)"** 로 바꿔야 들어갑니다 (기본 설정이면 '용량 초과' 오류)
    - 센서를 USB로 꽂은 채로 시리얼 모니터에 줄이 찍히는지 먼저 보고 → USB를 빼고 보조배터리로 → **수신기** 시리얼에 `A,BLE,...` 줄이 찍히면 성공
