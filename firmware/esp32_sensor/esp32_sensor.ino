@@ -12,6 +12,11 @@
           다른 센서가 보내는 ESP-NOW 패킷은 엿듣기에서 뺀다 (센서끼리 서로를 기기로 세지 않게).
   출력:   A,BLE,aa:bb:cc:dd:ee:ff,-58,A,3      센서,종류,주소,평균세기,프레임,패킷수
           A,WIFI,3c:71:bf:12:a0:4e,-61,D,42    프레임 D=데이터가 절반 이상, M=관리
+  상태 LED (보드 파란 LED, 11-26):
+          켜질 때 몇 초 계속 켜짐 = 핫스팟 찾는 중
+          1초마다 짧게 1번 깜빡     = 정상 (듣고 보내는 중)
+          1초마다 빠르게 3번 깜빡   = 핫스팟을 못 찾음 → 기본 채널(WIFI_CH)로 동작 중. 핫스팟·"호환성 최대화" 확인 후 다시 켜기
+          꺼져 있음               = 전원 없음
   패킷 내용(payload)은 읽지 않는다. 주소와 세기만 본다.
 
   보드마다 SENSOR_ID 를 A(앞왼쪽) B(앞오른쪽) C(뒤왼쪽) D(뒤오른쪽) 로 바꿔서 업로드.
@@ -34,6 +39,23 @@
 #define MAXE      48      // 1초 동안 기억할 최대 기기 수
 // 수신기(esp32_gateway) 주소. 수신기 시리얼 첫 줄 "# gateway MAC ..." 을 보고 바꾸면 재전송까지 되어 더 안정적.
 // 그대로(FF:...) 두면 방송으로 보냄 (설정 없이 됨, 대신 재전송 없음).
+#define LED_PIN   2       // 보드 파란 LED (대부분의 ESP32 DevKit). 없는 보드면 아무 일도 안 일어남
+static volatile uint8_t ledBlinks = 0;   // 깜빡일 횟수 (loop가 요청, ledTask가 처리 → 듣는 시간을 안 뺏음)
+static bool hotspotFound = false;
+static void ledTask(void*) {
+  for (;;) {
+    uint8_t n = ledBlinks;
+    if (n) {
+      ledBlinks = 0;
+      for (uint8_t i = 0; i < n; i++) {
+        digitalWrite(LED_PIN, HIGH); vTaskDelay(pdMS_TO_TICKS(40));
+        digitalWrite(LED_PIN, LOW);  vTaskDelay(pdMS_TO_TICKS(80));
+      }
+    }
+    vTaskDelay(pdMS_TO_TICKS(20));
+  }
+}
+
 static uint8_t GATEWAY_MAC[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 // ESP-NOW 패킷: 머리 6바이트 + 기기 기록 10바이트 × 최대 24개 = 246바이트 (한도 250)
@@ -131,6 +153,7 @@ static void findHotspotChannel() {
     for (int i = 0; i < n; i++) {
       if (WiFi.SSID(i) == HOTSPOT_SSID && WiFi.channel(i) <= 13) {
         wifiCh = WiFi.channel(i);
+        hotspotFound = true;
         Serial.printf("# hotspot '%s' found on ch %d\n", HOTSPOT_SSID, wifiCh);
         WiFi.scanDelete();
         return;
@@ -144,7 +167,11 @@ static void findHotspotChannel() {
 void setup() {
   Serial.begin(BAUD);
   delay(300);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, HIGH);          // 핫스팟 찾는 동안 계속 켜짐
   findHotspotChannel();
+  digitalWrite(LED_PIN, LOW);
+  xTaskCreate(ledTask, "led", 1536, nullptr, 1, nullptr);
   wifi_promiscuous_filter_t filt = { .filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA };
   esp_wifi_set_promiscuous_filter(&filt);
   esp_wifi_set_promiscuous_rx_cb(&sniffer);
@@ -177,10 +204,12 @@ void loop() {
   scan->start(SLOT_MS / 1000, false);   // 1초 BLE (블로킹)
   scan->clearResults();
   flush("BLE");
+  ledBlinks = hotspotFound ? 1 : 3;     // 1초마다 (BLE 칸 끝)
 
   esp_wifi_set_promiscuous(true);       // 1초 Wi-Fi
   esp_wifi_set_channel(wifiCh, WIFI_SECOND_CHAN_NONE);
   delay(SLOT_MS);
   esp_wifi_set_promiscuous(false);
   flush("WIFI");
+  ledBlinks = hotspotFound ? 1 : 3;     // 1초마다 (Wi-Fi 칸 끝)
 }
