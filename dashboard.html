@@ -172,6 +172,21 @@ button:disabled{cursor:default}
 .reset{width:100%;height:50px;border-radius:5px;margin-top:16px;font-size:17px;font-weight:700;color:var(--red);border:1.5px solid var(--red)}
 .reset.arm{background:var(--red);color:#fff}
 
+/* 보정 창 (실시간 모드) */
+.tiles.c3{grid-template-columns:repeat(3,1fr)}
+.acts{display:flex;gap:10px;margin-top:10px}
+.sheet .acts .go{width:auto;flex:1;margin-top:0;height:56px;font-size:19px}
+.sheet .acts .go.alt{background:var(--red)}
+.sheet .acts .go:disabled{background:var(--soft);color:var(--faint)}
+.line{flex:1;height:48px;border:1px solid var(--line);border-radius:5px;font-size:16px;font-weight:700;color:var(--sub)}
+.cand label{display:flex;gap:10px;align-items:center;padding:9px 12px;border:1px solid var(--line);border-radius:5px;margin-bottom:6px;font-size:16px;cursor:pointer}
+.cand code{font-size:14px}
+.cand .m{margin-left:auto;color:var(--faint);font-size:14px;white-space:nowrap}
+.cand .quiet{color:var(--faint);font-size:15px;padding:8px 0}
+.cmsg{margin-top:12px;font-size:16px;color:var(--sub)}
+.cmsg.good{color:var(--green)} .cmsg.bad{color:var(--red)}
+.calbtn{color:var(--blue);border-color:var(--blue)}
+
 /* 노트북·태블릿: 화면 높이에 딱 맞춤 (페이지 스크롤 없음) */
 @media (min-width:901px){
   html,body{height:100%;overflow:hidden}
@@ -252,8 +267,8 @@ button:disabled{cursor:default}
   <button class="go" id="next"></button>
   <footer class="sbar">
     <span class="sensor-st" id="sensorSt"><i></i><span id="sensorTxt">센서 4대 정상</span></span>
-    <span>기준 신호 2개 제외</span>
-    <span>기록 저장: data/exams/</span>
+    <span id="baseTxt">기준 신호 2개 제외</span>
+    <span id="saveTxt">가짜 데이터 시연 (저장 안 함)</span>
     <span class="sp"></span>
     <span id="upd"></span>
   </footer>
@@ -274,6 +289,21 @@ button:disabled{cursor:default}
 <!-- 시험 고르기 -->
 <div class="dim" id="examDim"><div class="sheet pick" id="examPick"></div></div>
 
+<!-- 보정 (실시간 모드, 시험 전) -->
+<div class="dim" id="calDim">
+  <div class="sheet pick">
+    <h3>보정 · 신호 지도 보충</h3>
+    <div class="q">1. 비콘(측정용 CAM)을 모형의 한 자리에 놓고, 가장 센 신호를 고르세요 <small>(최근 8초)</small></div>
+    <div class="cand" id="cand"><div class="quiet">신호를 기다리는 중…</div></div>
+    <div class="q" style="margin-top:14px">2. 비콘을 놓은 구역 → [기록 시작] → 손 떼고 6초 이상 → [기록 끝]. 구역마다 2~3자리</div>
+    <div class="tiles c3" id="zgrid"></div>
+    <div class="acts"><button class="go" id="cStart">기록 시작</button><button class="go alt" id="cStop" disabled>기록 끝</button></div>
+    <div class="acts"><button class="line" id="cUndo">마지막 지점 지우기</button><button class="line" id="cApply">지도에 반영</button></div>
+    <p class="cmsg" id="cmsg">시험 전에만 쓸 수 있어요. 대역 기기는 꺼 두세요.</p>
+    <button class="go" id="calClose">닫기</button>
+  </div>
+</div>
+
 <!-- 설정 -->
 <div class="dim" id="setDim">
   <div class="sheet">
@@ -281,14 +311,19 @@ button:disabled{cursor:default}
     <div class="row"><span>화면</span><div class="seg" id="modeSeg"><button data-m="auto">자동</button><button data-m="light">밝게</button><button data-m="dark">어둡게</button></div></div>
     <div class="row"><span>큰 글자</span><button class="sw" id="swBig" aria-label="큰 글자"></button></div>
     <div class="row"><span>알림 소리</span><button class="sw on" id="swSound" aria-label="알림 소리"></button></div>
-    <div class="row"><span>센서 D 끊김 연습<small>센서 하나가 꺼졌을 때 화면</small></span><button class="sw" id="swDead" aria-label="센서 D 끊김"></button></div>
+    <div class="row" id="rowDead"><span>센서 D 끊김 연습<small>센서 하나가 꺼졌을 때 화면</small></span><button class="sw" id="swDead" aria-label="센서 D 끊김"></button></div>
+    <button class="reset calbtn hide" id="calibOpen">보정 · 신호 지도 보충 (시험 전)</button>
     <button class="reset" id="reset">처음부터 다시 하기</button>
     <button class="go" id="closeSet">닫기</button>
   </div>
 </div>
 
 <script>
-/* ───── 가짜 데이터 시연: 어떤 시험이든 실제 60초로 압축 ───── */
+/* ───── 두 가지 모드 ─────
+   · 실시간(LIVE): server.py 가 띄운 화면 (http://노트북IP:8000). /state 를 1초마다 읽고, 버튼은 /control 로 보냄.
+     python server.py --live data/live.csv --scale 40   (센서 데이터)  /  python server.py  (서버의 가짜 시험 재생)
+   · 가짜 데이터 시연: 파일을 그냥 열었을 때(서버 없음) 또는 주소 끝에 ?demo. 아래 SCRIPT 로 60초 연출.
+   ───── 가짜 데이터 시연: 어떤 시험이든 실제 60초로 압축 ───── */
 const EXAM_S = 60, PREP_S = 10, WATCH_MIN = 3, HIGH_MIN = 15;
 const $ = id => document.getElementById(id);
 
@@ -345,11 +380,14 @@ function judge(s) {
   else why = live ? '' : '짧은 신호';
   return { ...s, min, inside, live, state, why };
 }
-const signals = () => SCRIPT.filter(s => t >= s.from).map(judge);
+let LIVE = false, snap = null, liveSig = [], lastPhase = null, connLost = false;
+const signals = () => LIVE ? liveSig : SCRIPT.filter(s => t >= s.from).map(judge);
+const curMin = () => LIVE ? Math.round((snap && snap.exam_min) || 0) : toMin(t);
 const LABEL = { check: '확인 필요', watch: '지켜보는 중' };
 const mmss = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 
 function render() {
+  if (LIVE) return renderLive();
   const info = examInfo(), sig = signals(), hot = sig.filter(s => s.state === 'check');
   const prepLeft = Math.max(0, PREP_S - prep);
   $('examName').textContent = info.name + ' (' + info.min + '분)';
@@ -402,7 +440,7 @@ function addLog(cls, text, sub, badge) {
   text = text.replace(' · ', ' '); sub = sub && sub.replace(/ · /g, ', ');
   const li = document.createElement('li');
   li.className = 'item ' + cls;
-  li.innerHTML = `<span class="when">${stage === 0 ? '준비' : toMin(t) + '분'}</span>
+  li.innerHTML = `<span class="when">${stage === 0 ? '준비' : curMin() + '분'}</span>
     <span class="tx"><b>${text}</b>${sub ? `<span>${sub}</span>` : ''}</span>
     <span class="bd ${badge ? 'k' : ''}">${badge || BADGE[cls]}</span>`;
   $('list').prepend(li);
@@ -470,9 +508,9 @@ function renderPick() {
 $('chgExam').onclick = () => { $('examDim').classList.add('show'); renderPick(); };
 
 /* 버튼 */
-$('next').onclick = () => { if (stage === 0 && prep >= PREP_S) startExam(); else if (stage === 1) toBreak(); else if (stage === 2) startPrep(); };
+$('next').onclick = () => { if (LIVE) return liveNext(); if (stage === 0 && prep >= PREP_S) startExam(); else if (stage === 1) toBreak(); else if (stage === 2) startPrep(); };
 $('okBreak').onclick = () => $('breakDim').classList.remove('show');
-['examDim', 'setDim'].forEach(id => $(id).onclick = e => { if (e.target.id === id) $(id).classList.remove('show'); });
+['examDim', 'setDim', 'calDim'].forEach(id => $(id).onclick = e => { if (e.target.id === id) $(id).classList.remove('show'); });
 $('gear').onclick = () => $('setDim').classList.add('show');
 $('closeSet').onclick = () => $('setDim').classList.remove('show');
 $('swBig').onclick = e => { e.currentTarget.classList.toggle('on'); document.body.classList.toggle('big'); };
@@ -483,7 +521,8 @@ $('reset').onclick = () => {      // 실수 방지: 3초 안에 두 번
   const b = $('reset');
   if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = '한 번 더 누르면 처음부터'; armT = setTimeout(() => { b.classList.remove('arm'); b.textContent = '처음부터 다시 하기'; }, 3000); return; }
   clearTimeout(armT); b.classList.remove('arm'); b.textContent = '처음부터 다시 하기';
-  $('setDim').classList.remove('show'); $('breakDim').classList.remove('show'); startPrep();
+  $('setDim').classList.remove('show'); $('breakDim').classList.remove('show');
+  if (LIVE) ctl('reset'); else startPrep();
 };
 function setMode(m) {
   if (m === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', m);
@@ -499,11 +538,188 @@ const pad = n => String(n).padStart(2, '0');
 function tick() {
   const d = new Date(), w = '일월화수목금토'[d.getDay()];
   $('now').textContent = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}(${w}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  $('upd').textContent = `마지막 갱신 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  if (!LIVE) $('upd').textContent = `마지막 갱신 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 tick(); setInterval(tick, 1000);
 
-startPrep();
+/* ───────────── 실시간 모드 (server.py) ───────────── */
+const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const KIND = { WIFI: 'Wi-Fi', BLE: '블루투스' };
+const LV = { '높음': 'check', '관찰': 'watch', '낮음': 'ok' };
+const SIDS = ['A', 'B', 'C', 'D'];
+const isReplay = () => snap && snap.mode !== 'live';
+const liveStage = p => p === '시험 중' ? 1 : p === '쉬는 시간' ? 2 : 0;
+
+function ctl(cmd, q) {
+  return fetch('/control/' + cmd + (q || ''), { method: 'POST' }).then(poll).catch(() => {});
+}
+function liveNext() {
+  if (!snap || isReplay()) return;
+  const p = snap.phase;
+  if (p === '대기') ctl('baseline');
+  else if (p === '기준선') { $('examDim').classList.remove('show'); ctl('start', '?min=' + examInfo().min); }
+  else if (p === '시험 중') ctl('end');
+  else if (p === '쉬는 시간') { $('breakDim').classList.remove('show'); ctl('reset'); }
+}
+
+function onSnap(s) {
+  connLost = false; snap = s;
+  liveSig = (s.signals || []).map(x => ({ id: x.no, kind: KIND[x.kind] || x.kind, zone: x.near, state: LV[x.level] || 'ok',
+    inside: Math.round(x.minutes), min: Math.round(x.minutes), live: x.active, why: x.why || '', seats: x.seats || '' }));
+  const p = s.phase;
+  stage = liveStage(p);
+  if (p !== lastPhase) {
+    if (lastPhase === null) addLog('info', '화면 연결됨', isReplay() ? '서버의 가짜 시험 재생 (센서 없이 보기)' : '실시간 센서 데이터');
+    else if (p === '대기') { $('list').innerHTML = ''; prev = {}; }
+    else if (p === '기준선') { if (!isReplay()) { $('list').innerHTML = ''; prev = {}; } addLog('info', '기준 측정 시작', '지금 켜져 있는 신호를 "원래 있던 신호"로 기억합니다. 대역 기기는 아직 끄세요'); }
+    else if (p === '시험 중') { prev = {}; addLog('info', '시험 시작', `${examInfo().name} ${s.exam_total}분 · 지금부터 새로 잡히는 신호만 기록`); }
+    else if (p === '쉬는 시간') showBreak(lastPhase === '시험 중');
+    lastPhase = p;
+  }
+  if (stage === 1) logLive();
+  render();
+  if ($('calDim').classList.contains('show')) renderCalib();
+}
+function poll() {
+  return fetch('/state', { cache: 'no-store' }).then(r => r.json()).then(onSnap).catch(() => { connLost = true; render(); });
+}
+
+function logLive() {
+  liveSig.forEach(s => {
+    const p = prev[s.id];
+    if (s.state !== 'ok' && (!p || p.state !== s.state))
+      addLog(s.state, `${s.zone === '복도' ? '복도' : s.zone + ' 구역'} · ${LABEL[s.state]}`,
+        `${s.id}번 · ${s.kind} · 교실 안 누적 ${s.inside}분${s.why ? ' · ' + s.why : ''}${s.seats ? ' · 자리 ' + s.seats : ''}`);
+    else if (p && p.state !== 'ok' && p.live && !s.live)
+      addLog('ok', `${s.id}번 신호 사라짐`, `${s.zone} · 교실 안 ${s.inside}분 동안 잡힘`);
+    prev[s.id] = { state: s.state, live: s.live };
+  });
+}
+
+function showBreak(popup) {
+  const hot = liveSig.filter(s => s.state === 'check');
+  const zones = [...new Set(hot.map(h => h.zone))];
+  addLog(hot.length ? 'check' : 'info', '시험 종료 · 쉬는 시간',
+    (hot.length ? `확인할 구역 ${zones.length}곳: ${zones.join(', ')}` : '확인할 구역 없음') + (isReplay() ? '' : ' · 시험 기록 저장됨 (data/exams/)'),
+    hot.length ? '확인 필요' : '안내');
+  if (!popup || !hot.length) return;
+  $('bZone').textContent = zones.join(', ');
+  $('chips').innerHTML = zones.map(z => `<div class="zg"><em>${esc(z)}</em>${(ZONES[z] || []).map(n => `<span>${n}</span>`).join('')}</div>`).join('');
+  $('breakDesc').innerHTML = hot.map(h => `${esc(h.zone)}: ${esc(h.kind)} 신호, 교실 안 누적 ${h.inside}분`).join('<br>');
+  $('breakDim').classList.add('show');
+  if ($('swSound').classList.contains('on')) beep();
+}
+
+function renderLive() {
+  const s = snap || {}, p = s.phase, info = examInfo(), sig = liveSig, hot = sig.filter(x => x.state === 'check');
+  const total = stage === 0 ? info.min : (s.exam_total || info.min);
+  $('examName').textContent = info.name + ' (' + total + '분)';
+  $('pickName').textContent = info.name + ' (' + info.min + '분)';
+  $('pickrow').classList.toggle('hide', stage !== 0 || isReplay());
+  $('app').classList.toggle('break', stage === 2);
+  $('rowDead').classList.add('hide');
+  $('calibOpen').classList.toggle('hide', isReplay() || stage !== 0);
+
+  // 센서 상태 (10초 안에 데이터가 온 센서 = 정상)
+  const age = s.sensor_age || {}, ok = k => age[k] != null && age[k] < 10, nOk = SIDS.filter(ok).length;
+  SIDS.forEach(k => $('s' + k).classList.toggle('bad', !ok(k)));
+  $('sensorSt').classList.toggle('bad', nOk < 4);
+  $('sensorTxt').textContent = SIDS.map(k => `${k} ${ok(k) ? '정상' : '응답 없음'}`).join(' / ') +
+    (nOk === 4 ? '' : nOk >= 3 ? ' (3대로 판정)' : ' (3대 이상 필요)');
+  $('baseTxt').textContent = p === '기준선' && s.base ? `원래 있던 신호 ${s.base.ids}개 기억 중` : `기준 신호 ${s.baseline_count || 0}개 제외`;
+  $('saveTxt').textContent = isReplay() ? '서버 가짜 시험 재생 (저장 안 함)' : '기록 저장: data/exams/';
+  $('upd').textContent = connLost ? '서버 연결 끊김' : `마지막 갱신 ${s.updated || ''}`;
+
+  const st = $('stage'), nb = $('next');
+  if (connLost) {
+    st.className = 'stage alert'; st.textContent = '연결 끊김';
+    $('msg').textContent = '서버와 연결이 끊겼습니다. 노트북의 server.py 와 핫스팟을 확인하십시오.';
+  } else if (stage === 0) {
+    st.className = 'stage'; st.textContent = '시험 전';
+    $('timeLabel').textContent = '시험 시간'; $('clock').textContent = mmss(info.min * 60);
+    const b = s.base || {};
+    if (p === '대기') {
+      $('msg').textContent = nOk >= 3 ? '센서가 켜졌습니다. 대역 기기를 끈 채로 [기준 측정 시작]을 누르십시오.' : '센서를 켜고 기다리십시오 (3대 이상 필요).';
+      $('bar').style.width = '0%';
+    } else if (b.sec == null) {
+      $('msg').textContent = '기준 신호를 측정하고 있습니다'; $('bar').style.width = '50%';
+    } else if (b.sec < b.need) {
+      $('msg').textContent = `기준 신호를 측정하고 있습니다 (${b.need - b.sec}초)`;
+    } else if (b.sec < b.good) {
+      $('msg').textContent = `시작할 수 있습니다. ${b.good - b.sec}초 더 기다리면 더 정확합니다.`;
+    } else $('msg').textContent = '측정 완료. 수험생 착석 후 [시험 시작]을 누르십시오.';
+    if (b.sec != null) $('bar').style.width = Math.min(100, b.sec / b.good * 100) + '%';
+  } else if (stage === 1) {
+    st.className = 'stage run'; st.textContent = '시험 중';
+    $('msg').textContent = '시험 중에는 기록만 합니다. 확인은 쉬는 시간에 하십시오.';
+    $('timeLabel').textContent = '남은 시간';
+    $('clock').textContent = mmss(Math.max(0, Math.round((total - (s.exam_min || 0)) * 60)));
+    $('bar').style.width = Math.min(100, (s.exam_min || 0) / total * 100) + '%';
+  } else {
+    const zones = [...new Set(hot.map(h => h.zone))];
+    st.className = 'stage ' + (hot.length ? 'alert' : 'done'); st.textContent = '쉬는 시간';
+    $('msg').textContent = hot.length ? `${zones.join(', ')} 구역을 확인하십시오.` : '확인할 구역이 없습니다.';
+    $('timeLabel').textContent = '시험 끝'; $('clock').textContent = '00:00';
+    $('bar').style.width = '100%';
+  }
+
+  Object.entries(seats).forEach(([n, d]) => d.className = 'seat' + (seatZone(+n[0], +n[2]) === '가운데' ? ' mid' : ''));
+  const rank = { check: 2, watch: 1, ok: 0 }, zoneState = {};
+  sig.forEach(x => { if (x.state !== 'ok' && (!zoneState[x.zone] || rank[x.state] > rank[zoneState[x.zone]])) zoneState[x.zone] = x.state; });
+  Object.entries(zoneState).forEach(([z, k]) => (ZONES[z] || []).forEach(n => seats[n].classList.add(k)));
+  document.querySelectorAll('[data-zl]').forEach(el => el.className = zoneState[el.dataset.zl] || '');
+
+  const cnt = k => sig.filter(x => x.state === k).length;
+  $('counts').innerHTML = stage === 0 ? '' : `확인 필요 <b class="n-check">${cnt('check')}</b>건, 관찰 <b class="n-watch">${cnt('watch')}</b>건, 낮음 ${cnt('ok')}건`;
+  if (!$('list').children.length) $('list').innerHTML = '<li class="empty" id="logEmpty">기록이 없습니다</li>';
+
+  if (isReplay()) { nb.disabled = true; nb.innerHTML = '가짜 시험 자동 재생 중 <small>센서 없이 화면 보기</small>'; }
+  else if (connLost) { nb.disabled = true; nb.innerHTML = '연결을 기다리는 중…'; }
+  else if (p === '대기') { nb.disabled = nOk < 3; nb.innerHTML = '기준 측정 시작 <small>약 1분</small>'; }
+  else if (stage === 0) { const b = s.base || {}; const left = (b.need || 0) - (b.sec || 0);
+    nb.disabled = left > 0; nb.innerHTML = left > 0 ? `기준 측정 중… <small>${left}초</small>` : '시험 시작'; }
+  else if (stage === 1) { nb.disabled = false; nb.innerHTML = `쉬는 시간으로 <small>${total}분이 되면 자동</small>`; }
+  else { nb.disabled = false; nb.innerHTML = '다음 시험 준비'; }
+}
+
+/* 보정 창 */
+let pickZone = '앞왼쪽', pickId = null, candT = null;
+function cmsg(text, kind) { const m = $('cmsg'); m.textContent = text; m.className = 'cmsg ' + (kind || ''); }
+function calCall(cmd, body) {
+  return fetch('/calib/' + cmd, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+    .then(r => r.json()).then(r => { cmsg(r.msg, r.ok ? 'good' : 'bad'); return poll(); }).catch(() => cmsg('서버 연결 끊김', 'bad'));
+}
+function renderCalib() {
+  const c = snap && snap.calib; if (!c) return;
+  const ZL = ['앞왼쪽', '앞오른쪽', '가운데', '뒤왼쪽', '뒤오른쪽', '복도'];
+  $('zgrid').innerHTML = ZL.map(z => `<button class="tile ${z === pickZone ? 'on' : ''}" data-z="${z}"><b>${z}</b><span>${c.points[z] || 0}자리 기록</span></button>`).join('');
+  $('zgrid').querySelectorAll('[data-z]').forEach(b => b.onclick = () => { pickZone = b.dataset.z; renderCalib(); });
+  const rec = !!c.recording;
+  $('cStart').disabled = rec; $('cStop').disabled = !rec;
+  if (rec) cmsg(`${c.recording.zone} 기록 중… ${c.recording.sec}초 (6초 이상 지나면 [기록 끝])`, 'good');
+}
+function loadCand() {
+  fetch('/calib/candidates', { cache: 'no-store' }).then(r => r.json()).then(list => {
+    if (!list.length) { $('cand').innerHTML = '<div class="quiet">최근 8초 동안 잡힌 신호가 없어요. 센서와 비콘 전원을 확인하세요.</div>'; return; }
+    if (!pickId) pickId = list[0].id;
+    $('cand').innerHTML = list.map(x => `<label><input type="radio" name="cid" value="${esc(x.id)}" ${x.id === pickId ? 'checked' : ''}>
+      <span>${x.kind === 'WIFI' ? 'Wi-Fi' : '블루투스'} · <code>${esc(x.id)}</code></span><span class="m">최대 ${x.max} dBm · 센서 ${x.sensors}대</span></label>`).join('');
+    $('cand').querySelectorAll('input').forEach(i => i.onchange = () => { pickId = i.value; });
+  }).catch(() => {});
+}
+$('calibOpen').onclick = () => { $('setDim').classList.remove('show'); $('calDim').classList.add('show'); renderCalib(); loadCand(); clearInterval(candT); candT = setInterval(loadCand, 2000); };
+$('calClose').onclick = () => { $('calDim').classList.remove('show'); clearInterval(candT); };
+$('cStart').onclick = () => calCall('start', { zone: pickZone, id: pickId });
+$('cStop').onclick = () => calCall('stop');
+$('cUndo').onclick = () => calCall('undo');
+$('cApply').onclick = () => calCall('apply');
+
+/* 시작: 서버가 있으면 실시간, 없으면(파일로 열기 또는 ?demo) 가짜 데이터 시연 */
+if (location.protocol.startsWith('http') && !/[?&]demo/.test(location.search)) {
+  fetch('/state', { cache: 'no-store' }).then(r => { if (!r.ok) throw 0; return r.json(); })
+    .then(s => { LIVE = true; onSnap(s); setInterval(poll, 1000); })
+    .catch(() => startPrep());
+} else startPrep();
 </script>
 </body>
 </html>

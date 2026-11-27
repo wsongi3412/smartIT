@@ -6,7 +6,8 @@
 ② 실시간(ESP32 도착 후):
     python serial_reader.py data/live.csv    # 다른 터미널
     python server.py --live data/live.csv --calib data/calib_real.csv --scale 40
-    → 태블릿 화면의 버튼으로 [① 기준 측정] → [② 시험 시작] → [③ 쉬는 시간] (순서대로만 눌림, 기준 측정 30초 이상)
+    → 태블릿 화면의 버튼으로 [기준 측정 시작] → [시험 시작] → [쉬는 시간으로] (순서대로만 눌림, 기준 측정 30초 이상)
+      시험 시간은 화면의 [시험 바꾸기]에서 고른 값(고등 50분, 중학 45분, 수능 교시별 등)이 /control/start?min=N 으로 넘어옴
     --scale 40 : 시연용 압축 (실제 1초 = 시험 40초, 약 75초면 50분)
     → 시험 전 [보정] 탭: 구역마다 비콘을 놓고 [기록 시작]/[기록 끝] → [지도에 반영]
 ③ 판넬 캡처용 고정 화면:
@@ -22,6 +23,7 @@ import socket
 import threading
 import time
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
 
 import sim
 from config import seats_text, EXAM_MIN, SENSOR_IDS, INSIDE, CENTER, HALL, ALL_ZONES, MIN_SENSORS, hash_id
@@ -56,6 +58,7 @@ class State:
         wl = os.path.join(HERE, "whitelist.txt")
         if os.path.exists(wl):   # 팀 노트북·핫스팟·태블릿 MAC (한 줄에 하나)
             self.whitelist = {hash_id(x.strip()) for x in open(wl) if x.strip() and not x.startswith("#")}
+        self.exam_min = EXAM_MIN          # 실시간: 화면에서 고른 시험 시간(분). [시험 시작] 때 정해짐
         if a.live:
             self.phase, self.start, self.end_at = "대기", None, None
         else:
@@ -63,7 +66,7 @@ class State:
             self.t0 = time.time()
 
     # ---- 실시간 모드 제어 ----
-    def control(self, cmd):
+    def control(self, cmd, minutes=None):
         with self.lock:
             now = time.time()
             if cmd == "baseline":
@@ -72,6 +75,8 @@ class State:
             elif cmd == "start":
                 if self.phase != "기준선" or now - self.base_from < BASE_MIN_S:   # ① 기준 측정 30초 이상 먼저
                     return
+                if minutes and 10 <= minutes <= 180:      # 화면에서 고른 시험 시간 (수능 교시, 중학교 45분 등)
+                    self.exam_min = minutes
                 self.phase, self.start = "시험 중", now
             elif cmd == "end":
                 if self.start is not None and self.end_at is None:
@@ -220,8 +225,8 @@ class State:
                 now, phase = 0.0, self.phase
             else:
                 now = ((self.end_at or time.time()) - self.start)
-                if self.end_at is None and now * a.scale >= EXAM_MIN * 60:   # 50분 되면 자동으로 쉬는 시간
-                    self.phase, self.end_at = "쉬는 시간", self.start + EXAM_MIN * 60 / a.scale
+                if self.end_at is None and now * a.scale >= self.exam_min * 60:   # 시험 시간이 다 되면 자동으로 쉬는 시간
+                    self.phase, self.end_at = "쉬는 시간", self.start + self.exam_min * 60 / a.scale
                     self.save_recording()
                     now = self.end_at - self.start
                 phase = self.phase
@@ -266,7 +271,7 @@ class State:
             if x["near"] == HALL:
                 heat[HALL] += 1
         snap = {"mode": "live" if a.live else "replay", "phase": phase, "exam_min": round(exam_min, 1),
-                "exam_total": EXAM_MIN, "signals": show,
+                "exam_total": self.exam_min if a.live else EXAM_MIN, "signals": show,
                 "baseline_count": sum(1 for s in sig if s["baseline"]),
                 "sensor_age": sensor_age, "updated": time.strftime("%H:%M:%S"),
                 "heat": {k: round(v, 1) for k, v in heat.items()},
@@ -321,7 +326,13 @@ def make_handler(state):
                 res = state.calib(self.path.rsplit("/", 1)[1], body)
                 self._send(200, json.dumps(res, ensure_ascii=False).encode(), "application/json; charset=utf-8")
             elif self.path.startswith("/control/") and state.a.live:
-                state.control(self.path.rsplit("/", 1)[1])
+                u = urlparse(self.path)
+                q = parse_qs(u.query)
+                try:
+                    minutes = int(q["min"][0]) if "min" in q else None
+                except ValueError:
+                    minutes = None
+                state.control(u.path.rsplit("/", 1)[1], minutes)
                 state.tick()
                 self._send(200, b"ok", "text/plain")
             else:
