@@ -305,7 +305,8 @@ button:disabled{cursor:default}
     <h3>보정 · 신호 지도 보충</h3>
     <div class="q">1. 비콘(측정용 CAM)을 모형의 한 자리에 놓고, 가장 센 신호를 고르세요 <small>(최근 8초)</small></div>
     <div class="cand" id="cand"><div class="quiet">신호를 기다리는 중…</div></div>
-    <div class="q" style="margin-top:14px">2. 비콘을 놓은 구역 → [기록 시작] → 손 떼고 6초 이상 → [기록 끝]. 구역마다 2~3자리</div>
+    <div class="acts" style="margin-top:4px"><input id="cidIn" placeholder="주소 직접 입력 (예: CAM Wi-Fi 7b37b5e9c1)" style="flex:1;height:44px;border:1px solid var(--line);border-radius:5px;padding:0 12px;font:inherit;font-size:16px;background:var(--card);color:var(--ink)"><button class="line" id="cidSet" style="flex:none;width:110px">이 주소 쓰기</button></div>
+    <div class="q" style="margin-top:14px">2. 비콘을 놓은 구역 → [기록 시작] → 손 떼고 6초 이상 → [기록 끝]. 구역마다 2~3자리. <b>교실 밖</b>은 복도뿐 아니라 <b>벽 너머 옆 반</b>에서도 재기</div>
     <div class="tiles c3" id="zgrid"></div>
     <div class="acts"><button class="go" id="cStart">기록 시작</button><button class="go alt" id="cStop" disabled>기록 끝</button></div>
     <div class="acts"><button class="line" id="cUndo">마지막 지점 지우기</button><button class="line" id="cApply">지도에 반영</button></div>
@@ -744,7 +745,7 @@ function calCall(cmd, body) {
 function renderCalib() {
   const c = snap && snap.calib; if (!c) return;
   const ZL = ['앞왼쪽', '앞오른쪽', '가운데', '뒤왼쪽', '뒤오른쪽', '복도'];
-  $('zgrid').innerHTML = ZL.map(z => `<button class="tile ${z === pickZone ? 'on' : ''}" data-z="${z}"><b>${z}</b><span>${c.points[z] || 0}자리 기록</span></button>`).join('');
+  $('zgrid').innerHTML = ZL.map(z => `<button class="tile ${z === pickZone ? 'on' : ''}" data-z="${z}"><b>${z === '복도' ? '교실 밖' : z}</b><span>${z === '복도' ? '복도·옆 반 · ' : ''}${c.points[z] || 0}자리 기록</span></button>`).join('');
   $('zgrid').querySelectorAll('[data-z]').forEach(b => b.onclick = () => { pickZone = b.dataset.z; renderCalib(); });
   const rec = !!c.recording;
   $('cStart').disabled = rec; $('cStop').disabled = !rec;
@@ -754,13 +755,18 @@ function loadCand() {
   fetch('/calib/candidates', { cache: 'no-store' }).then(r => r.json()).then(list => {
     if (!list.length) { $('cand').innerHTML = '<div class="quiet">최근 8초 동안 잡힌 신호가 없어요. 센서와 비콘 전원을 확인하세요.</div>'; return; }
     if (!pickId) pickId = list[0].id;
-    $('cand').innerHTML = list.map(x => `<label><input type="radio" name="cid" value="${esc(x.id)}" ${x.id === pickId ? 'checked' : ''}>
-      <span>${x.kind === 'WIFI' ? 'Wi-Fi' : '블루투스'} · <code>${esc(x.id)}</code></span><span class="m">최대 ${x.max} dBm · 센서 ${x.sensors}대</span></label>`).join('');
+    const shown = list.slice(0, 8);
+    const mine = list.find(x => x.id === pickId);
+    if (mine && !shown.includes(mine)) shown.unshift(mine);              // 고른 주소는 약해도 계속 보이게
+    if (!mine && pickId) shown.unshift({ id: pickId, kind: '', max: '—', sensors: 0, gone: true });
+    $('cand').innerHTML = shown.map(x => `<label><input type="radio" name="cid" value="${esc(x.id)}" ${x.id === pickId ? 'checked' : ''}>
+      <span>${x.gone ? '고른 주소' : x.kind === 'WIFI' ? 'Wi-Fi' : '블루투스'} · <code>${esc(x.id)}</code></span><span class="m">${x.gone ? '최근 8초 동안 안 잡힘' : `최대 ${x.max} dBm · 센서 ${x.sensors}대`}</span></label>`).join('');
     $('cand').querySelectorAll('input').forEach(i => i.onchange = () => { pickId = i.value; });
   }).catch(() => {});
 }
 $('calibOpen').onclick = () => { $('setDim').classList.remove('show'); $('calDim').classList.add('show'); renderCalib(); loadCand(); clearInterval(candT); candT = setInterval(loadCand, 2000); };
 $('calClose').onclick = () => { $('calDim').classList.remove('show'); clearInterval(candT); };
+$('cidSet').onclick = () => { const v = $('cidIn').value.trim(); if (v) { pickId = v; loadCand(); cmsg(`주소 ${v} 를 씁니다`, 'good'); } };
 $('cStart').onclick = () => calCall('start', { zone: pickZone, id: pickId });
 $('cStop').onclick = () => calCall('stop');
 $('cUndo').onclick = () => calCall('undo');

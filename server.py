@@ -154,7 +154,7 @@ class State:
             b["max"] = max(b["max"], v)
             b["sensors"].add(sen)
             b["n"] += n
-        out = sorted(best.values(), key=lambda x: -x["max"])[:8]
+        out = sorted(best.values(), key=lambda x: -x["max"])[:40]   # 화면은 위 8개 + 직접 입력한 주소
         return [{**x, "sensors": len(x["sensors"])} for x in out]
 
     def calib_windows(self, t0, t1, dev):
