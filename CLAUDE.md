@@ -39,7 +39,7 @@
 | 가짜 데이터로 실제 실행 확인 | `config.py` `pipeline.py` `server.py` `dashboard.html` `sim.py` `fake_live.py` `evaluate.py` `train_rf.py` `run_all.py` |
 | 컴파일만 통과 (보드에서 실행 전) | `firmware/esp32_sensor` (Partition Scheme: Huge APP 필요, 11-24 ESP-NOW 추가), `firmware/esp32_gateway` (11-24 새로), `firmware/esp32_beacon`, `firmware/esp32cam_glasses` |
 | 보드 2대로 확인 (11-25) | 센서 펌웨어(USB·무선 둘 다), 수신기 펌웨어, 보조배터리 전원. 시리얼 460800 (CH340) |
-| 5대 모두 새 펌웨어 (11-27) | 수신기 + 센서 A·B·C·D, 각각 USB로 ready·데이터 줄 확인. 보드별 MAC은 `docs/진행기록.md`. LED·4대 동시 무선은 아직 |
+| 5대 모두 새 펌웨어 (11-27) | 수신기 + 센서 A·B·C·D, 각각 USB로 ready·데이터 줄 확인. 보드별 MAC은 `docs/진행기록.md`. LED 실기 확인(센서 A). 4대 동시 무선은 아직 |
 | ESP32 와야 확인 | `serial_reader.py`, `stage_log.py` (4대 동시) |
 | 11-19 추가 (가짜 데이터·가짜 센서로 확인) | 대시보드 누적 열지도, 보정 탭(현장 신호 지도 보충), 태블릿용 큰 글씨·버튼, `server.py --at 분` 판넬 캡처 (`docs/screens/`) |
 | 11-22 추가 (가짜 데이터로 확인) | 어려운 경우 4종(`sim.make_hard`), 벽 근처 → '관찰' 규칙(`config.WALL_RATIO`), 가운데 부근 표시, `experiments/compare.py` → `docs/panel/` 판넬 그림·비교표. **송이의 ESP32 전 숙제 모두 완료** |
