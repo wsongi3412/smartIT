@@ -199,13 +199,14 @@ class State:
                     b_rows, b_labels = self.base_calib
                     self.loc = Locator().fit(list(b_rows) + rows, list(b_labels) + self.calib_labels)
                 else:                     # 신호 지도 파일 없음 = 처음 온 강의실 → 가짜(시뮬레이션) 지도는 버리고 현장 측정만 씀
-                    missing = [z for z in ALL_ZONES if not any(l[3] == z for l in self.calib_labels)]
+                    # 가운데는 화면 배치가 짝수(예: 6x6)면 없으므로 빼고 확인
+                    missing = [z for z in ALL_ZONES if z != CENTER and not any(l[3] == z for l in self.calib_labels)]
                     if missing:
-                        return {"ok": False, "msg": f"아직 안 잰 구역: {', '.join(missing)}. 모든 구역(복도 포함)을 2자리 이상 재 주세요"}
+                        return {"ok": False, "msg": f"아직 안 잰 구역: {', '.join(missing)}. 네 모서리와 복도(배치가 홀수면 가운데도)를 2자리 이상 재 주세요"}
                     self.loc = Locator().fit(rows, list(self.calib_labels))
                     self.field_only = True
                     self.calib_applied = len(self.calib_labels)
-                    few = [z for z in ALL_ZONES if int((self.loc.y == z).sum()) < 5]
+                    few = [z for z in ALL_ZONES if (z != CENTER or (self.loc.y == z).any()) and int((self.loc.y == z).sum()) < 5]
                     if few:   # k-NN은 이웃 5개 중 3표가 필요 → 구역마다 지문 5개 이상이어야 판정이 안정적
                         return {"ok": True, "msg": f"반영했어요 (지문 {len(self.loc.y)}개). 다만 지문이 적은 구역: {', '.join(few)} → 그 구역에 자리를 더 재고 다시 [지도에 반영]"}
                     return {"ok": True, "msg": f"현장 측정만으로 신호 지도를 만들었어요 (지문 {len(self.loc.y)}개)"}
