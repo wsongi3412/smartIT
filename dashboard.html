@@ -67,7 +67,9 @@ button:disabled{cursor:default}
 .pickrow button{margin-left:auto;height:40px;padding:0 18px;border-radius:6px;border:1px solid var(--blue);color:var(--blue);font-weight:700;font-size:16px}
 
 /* 본문 */
-.main{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;flex:1}
+.main{display:grid;grid-template-columns:1.2fr 1fr;grid-template-rows:1fr auto;gap:12px;flex:1}
+/* 자리표는 왼쪽 위~아래 끝까지, 큰 버튼은 오른쪽 기록 아래에만 */
+.main>.panel:first-child{grid-column:1;grid-row:1/3} .main>.panel:nth-child(2){grid-column:2;grid-row:1;min-height:0} .main>#next{grid-column:2;grid-row:2;padding:0 12px;text-align:center}
 .panel{padding:16px 18px;display:flex;flex-direction:column;min-height:0}
 .panel h2{font-size:18px;font-weight:700;margin:-16px -18px 12px;padding:9px 18px;background:var(--soft);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .panel h2 small{font-size:15px;font-weight:700;color:var(--faint);margin-left:auto}
@@ -81,9 +83,11 @@ button:disabled{cursor:default}
 .zl span.watch{background:var(--amber-soft);color:var(--amber-ink,#8A5300);box-shadow:inset 0 0 0 1.5px var(--amber)}
 .desks{position:relative;padding:12px;border:1px solid var(--line);border-radius:5px;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:6px;min-height:0}
 .seat{border-radius:6px;border:1px solid var(--seat-line,var(--line));background:var(--seat,var(--card));display:grid;place-items:center;font-size:20px;font-weight:700;color:var(--seat-ink,var(--sub));font-variant-numeric:tabular-nums;min-height:0;transition:background .3s}
-.seat[data-c="3"]{margin:0 8px}
-.seat[data-r="3"]{margin:6px 0}
-.seat[data-r="3"][data-c="3"]{margin:6px 8px}
+.room>.toplab{grid-column:1;grid-row:1} .room>.desks{grid-column:1;grid-row:2} .room>.hall{grid-column:2;grid-row:2} .room>.botlab{grid-column:1;grid-row:3}
+.room.hall-left{grid-template-columns:54px 1fr}
+.room.hall-left>.toplab,.room.hall-left>.desks,.room.hall-left>.botlab{grid-column:2}
+.room.hall-left>.hall{grid-column:1;border-left:1px solid var(--line);border-right:3px solid var(--ink)}
+.seat.many{font-size:15px}
 .seat.mid{border-style:dashed;border-color:var(--mid-line,var(--line));background:var(--mid,var(--soft));color:var(--faint)}
 .seat.watch{background:var(--amber-soft);border:2px solid var(--amber);color:var(--amber-ink,#8A5300);border-style:solid}
 .seat.check{background:var(--red);border-color:var(--red);color:#fff;border-style:solid;box-shadow:0 2px 8px color-mix(in oklch,var(--red) 35%,transparent)}
@@ -149,6 +153,12 @@ button:disabled{cursor:default}
 .alert-sheet p{color:var(--sub);font-size:17px;margin-top:14px}
 .alert-sheet .note{font-size:14px;color:var(--faint);margin-top:12px}
 .pick{width:min(860px,100%)}
+.lay{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center;margin-bottom:16px}
+.lay .f{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;color:var(--sub)}
+.lay .bigstep{margin:0}
+.lay .bigstep button{width:46px;height:46px;font-size:22px}
+.lay .bigstep b{min-width:64px;height:46px;font-size:22px}
+.lay .seg button{height:46px;padding:0 18px;font-size:16px}
 .pick .q{font-size:17px;font-weight:700;color:var(--sub);margin:4px 0 10px}
 .tiles{display:grid;gap:8px;margin-bottom:16px}
 .tiles.c4{grid-template-columns:repeat(4,1fr)} .tiles.c5{grid-template-columns:repeat(5,1fr)}
@@ -215,7 +225,8 @@ button:disabled{cursor:default}
   .go{height:54px;font-size:20px}
 }
 @media (max-width:900px){
-  .main{grid-template-columns:1fr}
+  .main{grid-template-columns:1fr;grid-template-rows:none}
+  .main>.panel:first-child,.main>.panel:nth-child(2),.main>#next{grid-column:1;grid-row:auto}
   .status{grid-template-columns:1fr auto}
   .msg{grid-column:1/-1;grid-row:2}
   .room{height:440px}
@@ -248,13 +259,12 @@ button:disabled{cursor:default}
     <section class="card panel">
       <h2>교실 자리표</h2>
       <div class="room">
-        <div><div class="board">칠판</div><div class="zl" style="margin-top:6px"><span data-zl="앞왼쪽">앞왼쪽</span><span></span><span data-zl="앞오른쪽">앞오른쪽</span></div></div>
-        <div></div>
+        <div class="toplab"><div class="board">칠판</div><div class="zl" style="margin-top:6px"><span data-zl="앞왼쪽">앞왼쪽</span><span class="zmid"></span><span data-zl="앞오른쪽">앞오른쪽</span></div></div>
         <div class="desks" id="desks">
           <span class="sn sA" id="sA">A</span><span class="sn sB" id="sB">B</span><span class="sn sC" id="sC">C</span><span class="sn sD" id="sD">D</span>
         </div>
         <div class="hall"><b>복도</b><small>시험장 밖</small></div>
-        <div class="zl"><span data-zl="뒤왼쪽">뒤왼쪽</span><span data-zl="가운데">가운데(점선)</span><span data-zl="뒤오른쪽">뒤오른쪽</span></div>
+        <div class="zl botlab"><span data-zl="뒤왼쪽">뒤왼쪽</span><span data-zl="가운데" class="zmid">가운데(점선)</span><span data-zl="뒤오른쪽">뒤오른쪽</span></div>
       </div>
     </section>
 
@@ -262,9 +272,9 @@ button:disabled{cursor:default}
       <h2>시간별 기록<small class="counts" id="counts"></small></h2>
       <div class="logbox"><div class="lhead"><span>시각</span><span>내용</span><span>상태</span></div><ul class="list" id="list"></ul></div>
     </section>
+    <button class="go" id="next"></button>
   </div>
 
-  <button class="go" id="next"></button>
   <footer class="sbar">
     <span class="sensor-st" id="sensorSt"><i></i><span id="sensorTxt">센서 4대 정상</span></span>
     <span id="baseTxt">기준 신호 2개 제외</span>
@@ -332,7 +342,7 @@ const SUNEUNG = [
   { id: 's3', name: '3교시 영어', min: 70 }, { id: 's4', name: '4교시 한국사·탐구', min: 107 },
   { id: 's5', name: '5교시 제2외국어/한문', min: 40 },
 ];
-let exam = { kind: 'hs', sid: 's1', custom: 60 };
+let exam = { kind: 'hs', sid: 's1', custom: 60, rows: 5, cols: 5, hall: 'right' };
 try { Object.assign(exam, JSON.parse(localStorage.getItem('es-exam') || '{}')); } catch (e) {}
 function examInfo() {
   if (exam.kind === 'sn') { const x = SUNEUNG.find(v => v.id === exam.sid) || SUNEUNG[0]; return { name: '수능 ' + x.name, min: x.min }; }
@@ -345,20 +355,52 @@ const toMin = s => Math.round(s * EXAM_MIN / EXAM_S);
 function setExam(patch) {
   Object.assign(exam, patch);
   exam.custom = Math.min(180, Math.max(10, exam.custom));
+  exam.rows = Math.min(8, Math.max(2, exam.rows)); exam.cols = Math.min(8, Math.max(2, exam.cols));
+  if (patch.rows || patch.cols) buildSeats();
+  if (patch.hall) applyHall();
   EXAM_MIN = examInfo().min;
   try { localStorage.setItem('es-exam', JSON.stringify(exam)); } catch (e) {}
   render();
   if ($('examDim').classList.contains('show')) renderPick();
 }
 
-/* 5×5 자리 "줄-열" — 팀 config.seat_zone 과 같은 구역 (가운데 = 3줄 전체 + 3열 전체) */
-const seatZone = (r, c) => r === 3 || c === 3 ? '가운데' : (r < 3 ? '앞' : '뒤') + (c < 3 ? '왼쪽' : '오른쪽');
+/* 자리 번호: 왼쪽 위부터 세로로 1, 2, 3 … (1줄 = 칠판 쪽). 줄·열 수는 [시험 바꾸기]에서 정함.
+   가운데 = 가운데 줄 전체 + 가운데 열 전체 (줄·열이 홀수일 때만). 5×5 이면 팀 config.seat_zone 과 같음 */
+const midOf = n => n % 2 ? (n + 1) / 2 : 0;
+const seatZone = (r, c) => {
+  const mr = midOf(exam.rows), mc = midOf(exam.cols);
+  if (r === mr || c === mc) return '가운데';
+  return (r <= exam.rows / 2 ? '앞' : '뒤') + (c <= exam.cols / 2 ? '왼쪽' : '오른쪽');
+};
 const ZONES = { '앞왼쪽': [], '앞오른쪽': [], '가운데': [], '뒤왼쪽': [], '뒤오른쪽': [] };
-const seats = {};
-for (let r = 1; r <= 5; r++) for (let c = 1; c <= 5; c++) {
-  const n = r + '-' + c, d = document.createElement('div');
-  d.textContent = n; d.dataset.r = r; d.dataset.c = c; seats[n] = d; ZONES[seatZone(r, c)].push(n); $('desks').appendChild(d);
+let seats = {};
+function buildSeats() {
+  const R = exam.rows, C = exam.cols, mr = midOf(R), mc = midOf(C), box = $('desks');
+  box.querySelectorAll('.seat').forEach(e => e.remove());
+  Object.keys(ZONES).forEach(z => ZONES[z] = []);
+  seats = {};
+  // 가운데 줄·열 양옆에 좁은 통로 칸을 끼워 넣음 (책상 크기는 모두 같게)
+  const tracks = (N, m, gap) => { const t = [], idx = []; for (let i = 1; i <= N; i++) { if (i === m) t.push(gap); idx[i] = t.length + 1; t.push('1fr'); if (i === m) t.push(gap); } return { t: t.join(' '), idx }; };
+  const TC = tracks(C, mc, '6px'), TR = tracks(R, mr, '4px');
+  box.style.gridTemplateColumns = TC.t;
+  box.style.gridTemplateRows = TR.t;
+  for (let r = 1; r <= R; r++) for (let c = 1; c <= C; c++) {
+    // 번호: 왼쪽 위부터 세로로 1, 2, 3 … (1열 위→아래, 다음 2열)
+    const n = String((c - 1) * R + r), d = document.createElement('div');
+    d.textContent = n; d.dataset.r = r; d.dataset.c = c;
+    d.style.gridColumn = TC.idx[c]; d.style.gridRow = TR.idx[r];
+    if (r === mr) d.dataset.mr = 1;
+    if (c === mc) d.dataset.mc = 1;
+    seats[n] = d; ZONES[seatZone(r, c)].push(n); box.appendChild(d);
+  }
+  Object.values(ZONES).forEach(a => a.sort((x, y) => x - y));   // 구역별 번호를 작은 순서로
+  // 위·아래 구역 이름표 폭을 자리 열에 맞춤 (가운데 열이 없으면 가운데 칸 숨김)
+  const side = Math.floor(C / 2), mid = mc ? 1 : 0;
+  document.querySelectorAll('.room .zl').forEach(z => z.style.gridTemplateColumns = `${side}fr ${mid ? '1fr' : '0'} ${side}fr`);
+  document.querySelectorAll('.zmid').forEach(z => z.classList.toggle('hide', !ZONES['가운데'].length));
 }
+function applyHall() { document.querySelector('.room').classList.toggle('hall-left', exam.hall === 'left'); }
+buildSeats(); applyHall();
 
 const BASELINE = ['감독관 태블릿', '시연용 핫스팟'];   // 원래 있던 신호 (기준선)
 const SCRIPT = [
@@ -381,7 +423,7 @@ function judge(s) {
   return { ...s, min, inside, live, state, why };
 }
 let LIVE = false, snap = null, liveSig = [], lastPhase = null, connLost = false;
-const signals = () => LIVE ? liveSig : SCRIPT.filter(s => t >= s.from).map(judge);
+const signals = () => LIVE ? liveSig : SCRIPT.filter(s => t >= s.from && (s.zone === '복도' || (ZONES[s.zone] || []).length)).map(judge);   // 자리 없는 구역(짝수 배치의 가운데)은 제외
 const curMin = () => LIVE ? Math.round((snap && snap.exam_min) || 0) : toMin(t);
 const LABEL = { check: '확인 필요', watch: '지켜보는 중' };
 const mmss = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
@@ -414,10 +456,11 @@ function render() {
     $('bar').style.width = '100%';
   }
   $('pickrow').classList.toggle('hide', stage !== 0);
-  $('pickName').textContent = info.name + ' (' + info.min + '분)';
+  $('pickName').textContent = `${info.name} (${info.min}분)  ·  교실 ${exam.rows}줄×${exam.cols}열, 복도 ${exam.hall === 'left' ? '왼쪽' : '오른쪽'}`;
   $('app').classList.toggle('break', stage === 2);
 
-  Object.entries(seats).forEach(([n, d]) => d.className = 'seat' + (seatZone(+n[0], +n[2]) === '가운데' ? ' mid' : ''));
+  const many = exam.cols >= 7 ? ' many' : '';
+  Object.entries(seats).forEach(([n, d]) => { const r = +d.dataset.r, c = +d.dataset.c; d.className = 'seat' + many + (seatZone(r, c) === '가운데' ? ' mid' : ''); });
   sig.forEach(s => { if (s.state !== 'ok' && ZONES[s.zone]) ZONES[s.zone].forEach(n => seats[n].classList.add(s.state)); });
   document.querySelectorAll('[data-zl]').forEach(el => { const z = sig.find(s => s.zone === el.dataset.zl && s.state !== 'ok'); el.className = z ? z.state : ''; });
 
@@ -434,7 +477,7 @@ function render() {
 
 /* 기록: 일이 생길 때만 한 줄 */
 const BADGE = { check: '확인 필요', watch: '지켜보는 중', ok: '정상', info: '안내' };
-const seatList = z => z === '가운데' ? '3줄 전체 + 3열 전체' : (ZONES[z] || []).join(', ');
+const seatList = z => (ZONES[z] || []).join(', ') || '없음';
 function addLog(cls, text, sub, badge) {
   const e = $('logEmpty'); if (e) e.remove();
   text = text.replace(' · ', ' '); sub = sub && sub.replace(/ · /g, ', ');
@@ -477,7 +520,7 @@ function toBreak() {
   render();
   if (!hot.length) return;
   $('bZone').textContent = hot.map(h => h.zone).join(', ');
-  $('chips').innerHTML = hot.map(h => `<div class="zg"><em>${h.zone}</em>${ZONES[h.zone].map(n => `<span>${n}</span>`).join('')}</div>`).join('');
+  $('chips').innerHTML = hot.filter(h => ZONES[h.zone] && ZONES[h.zone].length).map(h => `<div class="zg"><em>${h.zone}</em>${ZONES[h.zone].map(n => `<span>${n}</span>`).join('')}</div>`).join('');
   $('breakDesc').innerHTML = hot.map(h => `${h.zone}: ${h.kind} 신호, 교실 안 누적 ${h.inside}분`).join('<br>');
   $('breakDim').classList.add('show');
   if ($('swSound').classList.contains('on')) beep();
@@ -497,12 +540,20 @@ function renderPick() {
   if (k === 'sn') h += `<div class="q">2. 교시</div><div class="tiles c5">${SUNEUNG.map(x => {
     const [n, ...r] = x.name.split(' '); return tile(`data-s="${x.id}"`, exam.sid === x.id, n, r.join(' ') + '<br>' + x.min + '분'); }).join('')}</div>`;
   if (k === 'custom') h += `<div class="q">2. 시험 시간</div><div class="bigstep"><button data-d="-5" aria-label="5분 줄이기">−</button><b>${exam.custom}분</b><button data-d="5" aria-label="5분 늘리기">+</button></div>`;
+  h += `<div class="q">${k === 'sn' || k === 'custom' ? 3 : 2}. 교실 배치</div><div class="lay">
+    <span class="f">가로(열)<span class="bigstep"><button data-lc="-1" aria-label="열 줄이기">−</button><b>${exam.cols}</b><button data-lc="1" aria-label="열 늘리기">+</button></span></span>
+    <span class="f">세로(줄)<span class="bigstep"><button data-lr="-1" aria-label="줄 줄이기">−</button><b>${exam.rows}</b><button data-lr="1" aria-label="줄 늘리기">+</button></span></span>
+    <span class="f">복도<span class="seg"><button data-h="left" class="${exam.hall === 'left' ? 'on' : ''}">왼쪽</button><button data-h="right" class="${exam.hall !== 'left' ? 'on' : ''}">오른쪽</button></span></span>
+  </div>`;
   const info = examInfo();
-  h += `<button class="go" id="pickDone">${info.name} ${info.min}분 적용</button>`;
+  h += `<button class="go" id="pickDone">${info.name} ${info.min}분, ${exam.rows}줄×${exam.cols}열, 복도 ${exam.hall === 'left' ? '왼쪽' : '오른쪽'} 적용</button>`;
   const el = $('examPick'); el.innerHTML = h;
   el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => setExam({ kind: b.dataset.k }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => setExam({ sid: b.dataset.s }));
   el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => setExam({ custom: exam.custom + Number(b.dataset.d) }));
+  el.querySelectorAll('[data-lc]').forEach(b => b.onclick = () => setExam({ cols: exam.cols + Number(b.dataset.lc) }));
+  el.querySelectorAll('[data-lr]').forEach(b => b.onclick = () => setExam({ rows: exam.rows + Number(b.dataset.lr) }));
+  el.querySelectorAll('[data-h]').forEach(b => b.onclick = () => setExam({ hall: b.dataset.h }));
   $('pickDone').onclick = () => $('examDim').classList.remove('show');
 }
 $('chgExam').onclick = () => { $('examDim').classList.add('show'); renderPick(); };
@@ -589,7 +640,7 @@ function logLive() {
     const p = prev[s.id];
     if (s.state !== 'ok' && (!p || p.state !== s.state))
       addLog(s.state, `${s.zone === '복도' ? '복도' : s.zone + ' 구역'} · ${LABEL[s.state]}`,
-        `${s.id}번 · ${s.kind} · 교실 안 누적 ${s.inside}분${s.why ? ' · ' + s.why : ''}${s.seats ? ' · 자리 ' + s.seats : ''}`);
+        `${s.id}번 · ${s.kind} · 교실 안 누적 ${s.inside}분${s.why ? ' · ' + s.why : ''}${(ZONES[s.zone] || []).length ? ' · 자리 ' + seatList(s.zone) : (s.seats ? ' · 자리 ' + s.seats : '')}`);
     else if (p && p.state !== 'ok' && p.live && !s.live)
       addLog('ok', `${s.id}번 신호 사라짐`, `${s.zone} · 교실 안 ${s.inside}분 동안 잡힘`);
     prev[s.id] = { state: s.state, live: s.live };
@@ -664,7 +715,7 @@ function renderLive() {
     $('bar').style.width = '100%';
   }
 
-  Object.entries(seats).forEach(([n, d]) => d.className = 'seat' + (seatZone(+n[0], +n[2]) === '가운데' ? ' mid' : ''));
+  Object.entries(seats).forEach(([n, d]) => d.className = 'seat' + (exam.cols >= 7 ? ' many' : '') + (seatZone(+d.dataset.r, +d.dataset.c) === '가운데' ? ' mid' : ''));
   const rank = { check: 2, watch: 1, ok: 0 }, zoneState = {};
   sig.forEach(x => { if (x.state !== 'ok' && (!zoneState[x.zone] || rank[x.state] > rank[zoneState[x.zone]])) zoneState[x.zone] = x.state; });
   Object.entries(zoneState).forEach(([z, k]) => (ZONES[z] || []).forEach(n => seats[n].classList.add(k)));

@@ -67,7 +67,9 @@ button:disabled{cursor:default}
 .pickrow button{margin-left:auto;height:40px;padding:0 18px;border-radius:6px;border:1px solid var(--blue);color:var(--blue);font-weight:700;font-size:16px}
 
 /* 본문 */
-.main{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;flex:1}
+.main{display:grid;grid-template-columns:1.2fr 1fr;grid-template-rows:1fr auto;gap:12px;flex:1}
+/* 자리표는 왼쪽 위~아래 끝까지, 큰 버튼은 오른쪽 기록 아래에만 */
+.main>.panel:first-child{grid-column:1;grid-row:1/3} .main>.panel:nth-child(2){grid-column:2;grid-row:1;min-height:0} .main>#next{grid-column:2;grid-row:2;padding:0 12px;text-align:center}
 .panel{padding:16px 18px;display:flex;flex-direction:column;min-height:0}
 .panel h2{font-size:18px;font-weight:700;margin:-16px -18px 12px;padding:9px 18px;background:var(--soft);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .panel h2 small{font-size:15px;font-weight:700;color:var(--faint);margin-left:auto}
@@ -81,9 +83,11 @@ button:disabled{cursor:default}
 .zl span.watch{background:var(--amber-soft);color:var(--amber-ink,#8A5300);box-shadow:inset 0 0 0 1.5px var(--amber)}
 .desks{position:relative;padding:12px;border:1px solid var(--line);border-radius:5px;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:repeat(5,1fr);gap:6px;min-height:0}
 .seat{border-radius:6px;border:1px solid var(--seat-line,var(--line));background:var(--seat,var(--card));display:grid;place-items:center;font-size:20px;font-weight:700;color:var(--seat-ink,var(--sub));font-variant-numeric:tabular-nums;min-height:0;transition:background .3s}
-.seat[data-c="3"]{margin:0 8px}
-.seat[data-r="3"]{margin:6px 0}
-.seat[data-r="3"][data-c="3"]{margin:6px 8px}
+.room>.toplab{grid-column:1;grid-row:1} .room>.desks{grid-column:1;grid-row:2} .room>.hall{grid-column:2;grid-row:2} .room>.botlab{grid-column:1;grid-row:3}
+.room.hall-left{grid-template-columns:54px 1fr}
+.room.hall-left>.toplab,.room.hall-left>.desks,.room.hall-left>.botlab{grid-column:2}
+.room.hall-left>.hall{grid-column:1;border-left:1px solid var(--line);border-right:3px solid var(--ink)}
+.seat.many{font-size:15px}
 .seat.mid{border-style:dashed;border-color:var(--mid-line,var(--line));background:var(--mid,var(--soft));color:var(--faint)}
 .seat.watch{background:var(--amber-soft);border:2px solid var(--amber);color:var(--amber-ink,#8A5300);border-style:solid}
 .seat.check{background:var(--red);border-color:var(--red);color:#fff;border-style:solid;box-shadow:0 2px 8px color-mix(in oklch,var(--red) 35%,transparent)}
@@ -149,6 +153,12 @@ button:disabled{cursor:default}
 .alert-sheet p{color:var(--sub);font-size:17px;margin-top:14px}
 .alert-sheet .note{font-size:14px;color:var(--faint);margin-top:12px}
 .pick{width:min(860px,100%)}
+.lay{display:flex;flex-wrap:wrap;gap:14px 28px;align-items:center;margin-bottom:16px}
+.lay .f{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;color:var(--sub)}
+.lay .bigstep{margin:0}
+.lay .bigstep button{width:46px;height:46px;font-size:22px}
+.lay .bigstep b{min-width:64px;height:46px;font-size:22px}
+.lay .seg button{height:46px;padding:0 18px;font-size:16px}
 .pick .q{font-size:17px;font-weight:700;color:var(--sub);margin:4px 0 10px}
 .tiles{display:grid;gap:8px;margin-bottom:16px}
 .tiles.c4{grid-template-columns:repeat(4,1fr)} .tiles.c5{grid-template-columns:repeat(5,1fr)}
@@ -171,6 +181,21 @@ button:disabled{cursor:default}
 .seg button.on{background:var(--blue);color:#fff}
 .reset{width:100%;height:50px;border-radius:5px;margin-top:16px;font-size:17px;font-weight:700;color:var(--red);border:1.5px solid var(--red)}
 .reset.arm{background:var(--red);color:#fff}
+
+/* 보정 창 (실시간 모드) */
+.tiles.c3{grid-template-columns:repeat(3,1fr)}
+.acts{display:flex;gap:10px;margin-top:10px}
+.sheet .acts .go{width:auto;flex:1;margin-top:0;height:56px;font-size:19px}
+.sheet .acts .go.alt{background:var(--red)}
+.sheet .acts .go:disabled{background:var(--soft);color:var(--faint)}
+.line{flex:1;height:48px;border:1px solid var(--line);border-radius:5px;font-size:16px;font-weight:700;color:var(--sub)}
+.cand label{display:flex;gap:10px;align-items:center;padding:9px 12px;border:1px solid var(--line);border-radius:5px;margin-bottom:6px;font-size:16px;cursor:pointer}
+.cand code{font-size:14px}
+.cand .m{margin-left:auto;color:var(--faint);font-size:14px;white-space:nowrap}
+.cand .quiet{color:var(--faint);font-size:15px;padding:8px 0}
+.cmsg{margin-top:12px;font-size:16px;color:var(--sub)}
+.cmsg.good{color:var(--green)} .cmsg.bad{color:var(--red)}
+.calbtn{color:var(--blue);border-color:var(--blue)}
 
 /* 노트북·태블릿: 화면 높이에 딱 맞춤 (페이지 스크롤 없음) */
 @media (min-width:901px){
@@ -200,7 +225,8 @@ button:disabled{cursor:default}
   .go{height:54px;font-size:20px}
 }
 @media (max-width:900px){
-  .main{grid-template-columns:1fr}
+  .main{grid-template-columns:1fr;grid-template-rows:none}
+  .main>.panel:first-child,.main>.panel:nth-child(2),.main>#next{grid-column:1;grid-row:auto}
   .status{grid-template-columns:1fr auto}
   .msg{grid-column:1/-1;grid-row:2}
   .room{height:440px}
@@ -233,13 +259,12 @@ button:disabled{cursor:default}
     <section class="card panel">
       <h2>교실 자리표</h2>
       <div class="room">
-        <div><div class="board">칠판</div><div class="zl" style="margin-top:6px"><span data-zl="앞왼쪽">앞왼쪽</span><span></span><span data-zl="앞오른쪽">앞오른쪽</span></div></div>
-        <div></div>
+        <div class="toplab"><div class="board">칠판</div><div class="zl" style="margin-top:6px"><span data-zl="앞왼쪽">앞왼쪽</span><span class="zmid"></span><span data-zl="앞오른쪽">앞오른쪽</span></div></div>
         <div class="desks" id="desks">
           <span class="sn sA" id="sA">A</span><span class="sn sB" id="sB">B</span><span class="sn sC" id="sC">C</span><span class="sn sD" id="sD">D</span>
         </div>
         <div class="hall"><b>복도</b><small>시험장 밖</small></div>
-        <div class="zl"><span data-zl="뒤왼쪽">뒤왼쪽</span><span data-zl="가운데">가운데(점선)</span><span data-zl="뒤오른쪽">뒤오른쪽</span></div>
+        <div class="zl botlab"><span data-zl="뒤왼쪽">뒤왼쪽</span><span data-zl="가운데" class="zmid">가운데(점선)</span><span data-zl="뒤오른쪽">뒤오른쪽</span></div>
       </div>
     </section>
 
@@ -247,13 +272,13 @@ button:disabled{cursor:default}
       <h2>시간별 기록<small class="counts" id="counts"></small></h2>
       <div class="logbox"><div class="lhead"><span>시각</span><span>내용</span><span>상태</span></div><ul class="list" id="list"></ul></div>
     </section>
+    <button class="go" id="next"></button>
   </div>
 
-  <button class="go" id="next"></button>
   <footer class="sbar">
     <span class="sensor-st" id="sensorSt"><i></i><span id="sensorTxt">센서 4대 정상</span></span>
-    <span>기준 신호 2개 제외</span>
-    <span>기록 저장: data/exams/</span>
+    <span id="baseTxt">기준 신호 2개 제외</span>
+    <span id="saveTxt">가짜 데이터 시연 (저장 안 함)</span>
     <span class="sp"></span>
     <span id="upd"></span>
   </footer>
@@ -274,6 +299,21 @@ button:disabled{cursor:default}
 <!-- 시험 고르기 -->
 <div class="dim" id="examDim"><div class="sheet pick" id="examPick"></div></div>
 
+<!-- 보정 (실시간 모드, 시험 전) -->
+<div class="dim" id="calDim">
+  <div class="sheet pick">
+    <h3>보정 · 신호 지도 보충</h3>
+    <div class="q">1. 비콘(측정용 CAM)을 모형의 한 자리에 놓고, 가장 센 신호를 고르세요 <small>(최근 8초)</small></div>
+    <div class="cand" id="cand"><div class="quiet">신호를 기다리는 중…</div></div>
+    <div class="q" style="margin-top:14px">2. 비콘을 놓은 구역 → [기록 시작] → 손 떼고 6초 이상 → [기록 끝]. 구역마다 2~3자리</div>
+    <div class="tiles c3" id="zgrid"></div>
+    <div class="acts"><button class="go" id="cStart">기록 시작</button><button class="go alt" id="cStop" disabled>기록 끝</button></div>
+    <div class="acts"><button class="line" id="cUndo">마지막 지점 지우기</button><button class="line" id="cApply">지도에 반영</button></div>
+    <p class="cmsg" id="cmsg">시험 전에만 쓸 수 있어요. 대역 기기는 꺼 두세요.</p>
+    <button class="go" id="calClose">닫기</button>
+  </div>
+</div>
+
 <!-- 설정 -->
 <div class="dim" id="setDim">
   <div class="sheet">
@@ -281,14 +321,19 @@ button:disabled{cursor:default}
     <div class="row"><span>화면</span><div class="seg" id="modeSeg"><button data-m="auto">자동</button><button data-m="light">밝게</button><button data-m="dark">어둡게</button></div></div>
     <div class="row"><span>큰 글자</span><button class="sw" id="swBig" aria-label="큰 글자"></button></div>
     <div class="row"><span>알림 소리</span><button class="sw on" id="swSound" aria-label="알림 소리"></button></div>
-    <div class="row"><span>센서 D 끊김 연습<small>센서 하나가 꺼졌을 때 화면</small></span><button class="sw" id="swDead" aria-label="센서 D 끊김"></button></div>
+    <div class="row" id="rowDead"><span>센서 D 끊김 연습<small>센서 하나가 꺼졌을 때 화면</small></span><button class="sw" id="swDead" aria-label="센서 D 끊김"></button></div>
+    <button class="reset calbtn hide" id="calibOpen">보정 · 신호 지도 보충 (시험 전)</button>
     <button class="reset" id="reset">처음부터 다시 하기</button>
     <button class="go" id="closeSet">닫기</button>
   </div>
 </div>
 
 <script>
-/* ───── 가짜 데이터 시연: 어떤 시험이든 실제 60초로 압축 ───── */
+/* ───── 두 가지 모드 ─────
+   · 실시간(LIVE): server.py 가 띄운 화면 (http://노트북IP:8000). /state 를 1초마다 읽고, 버튼은 /control 로 보냄.
+     python server.py --live data/live.csv --scale 40   (센서 데이터)  /  python server.py  (서버의 가짜 시험 재생)
+   · 가짜 데이터 시연: 파일을 그냥 열었을 때(서버 없음) 또는 주소 끝에 ?demo. 아래 SCRIPT 로 60초 연출.
+   ───── 가짜 데이터 시연: 어떤 시험이든 실제 60초로 압축 ───── */
 const EXAM_S = 60, PREP_S = 10, WATCH_MIN = 3, HIGH_MIN = 15;
 const $ = id => document.getElementById(id);
 
@@ -297,7 +342,7 @@ const SUNEUNG = [
   { id: 's3', name: '3교시 영어', min: 70 }, { id: 's4', name: '4교시 한국사·탐구', min: 107 },
   { id: 's5', name: '5교시 제2외국어/한문', min: 40 },
 ];
-let exam = { kind: 'hs', sid: 's1', custom: 60 };
+let exam = { kind: 'hs', sid: 's1', custom: 60, rows: 5, cols: 5, hall: 'right' };
 try { Object.assign(exam, JSON.parse(localStorage.getItem('es-exam') || '{}')); } catch (e) {}
 function examInfo() {
   if (exam.kind === 'sn') { const x = SUNEUNG.find(v => v.id === exam.sid) || SUNEUNG[0]; return { name: '수능 ' + x.name, min: x.min }; }
@@ -310,20 +355,52 @@ const toMin = s => Math.round(s * EXAM_MIN / EXAM_S);
 function setExam(patch) {
   Object.assign(exam, patch);
   exam.custom = Math.min(180, Math.max(10, exam.custom));
+  exam.rows = Math.min(8, Math.max(2, exam.rows)); exam.cols = Math.min(8, Math.max(2, exam.cols));
+  if (patch.rows || patch.cols) buildSeats();
+  if (patch.hall) applyHall();
   EXAM_MIN = examInfo().min;
   try { localStorage.setItem('es-exam', JSON.stringify(exam)); } catch (e) {}
   render();
   if ($('examDim').classList.contains('show')) renderPick();
 }
 
-/* 5×5 자리 "줄-열" — 팀 config.seat_zone 과 같은 구역 (가운데 = 3줄 전체 + 3열 전체) */
-const seatZone = (r, c) => r === 3 || c === 3 ? '가운데' : (r < 3 ? '앞' : '뒤') + (c < 3 ? '왼쪽' : '오른쪽');
+/* 자리 번호: 왼쪽 위부터 세로로 1, 2, 3 … (1줄 = 칠판 쪽). 줄·열 수는 [시험 바꾸기]에서 정함.
+   가운데 = 가운데 줄 전체 + 가운데 열 전체 (줄·열이 홀수일 때만). 5×5 이면 팀 config.seat_zone 과 같음 */
+const midOf = n => n % 2 ? (n + 1) / 2 : 0;
+const seatZone = (r, c) => {
+  const mr = midOf(exam.rows), mc = midOf(exam.cols);
+  if (r === mr || c === mc) return '가운데';
+  return (r <= exam.rows / 2 ? '앞' : '뒤') + (c <= exam.cols / 2 ? '왼쪽' : '오른쪽');
+};
 const ZONES = { '앞왼쪽': [], '앞오른쪽': [], '가운데': [], '뒤왼쪽': [], '뒤오른쪽': [] };
-const seats = {};
-for (let r = 1; r <= 5; r++) for (let c = 1; c <= 5; c++) {
-  const n = r + '-' + c, d = document.createElement('div');
-  d.textContent = n; d.dataset.r = r; d.dataset.c = c; seats[n] = d; ZONES[seatZone(r, c)].push(n); $('desks').appendChild(d);
+let seats = {};
+function buildSeats() {
+  const R = exam.rows, C = exam.cols, mr = midOf(R), mc = midOf(C), box = $('desks');
+  box.querySelectorAll('.seat').forEach(e => e.remove());
+  Object.keys(ZONES).forEach(z => ZONES[z] = []);
+  seats = {};
+  // 가운데 줄·열 양옆에 좁은 통로 칸을 끼워 넣음 (책상 크기는 모두 같게)
+  const tracks = (N, m, gap) => { const t = [], idx = []; for (let i = 1; i <= N; i++) { if (i === m) t.push(gap); idx[i] = t.length + 1; t.push('1fr'); if (i === m) t.push(gap); } return { t: t.join(' '), idx }; };
+  const TC = tracks(C, mc, '6px'), TR = tracks(R, mr, '4px');
+  box.style.gridTemplateColumns = TC.t;
+  box.style.gridTemplateRows = TR.t;
+  for (let r = 1; r <= R; r++) for (let c = 1; c <= C; c++) {
+    // 번호: 왼쪽 위부터 세로로 1, 2, 3 … (1열 위→아래, 다음 2열)
+    const n = String((c - 1) * R + r), d = document.createElement('div');
+    d.textContent = n; d.dataset.r = r; d.dataset.c = c;
+    d.style.gridColumn = TC.idx[c]; d.style.gridRow = TR.idx[r];
+    if (r === mr) d.dataset.mr = 1;
+    if (c === mc) d.dataset.mc = 1;
+    seats[n] = d; ZONES[seatZone(r, c)].push(n); box.appendChild(d);
+  }
+  Object.values(ZONES).forEach(a => a.sort((x, y) => x - y));   // 구역별 번호를 작은 순서로
+  // 위·아래 구역 이름표 폭을 자리 열에 맞춤 (가운데 열이 없으면 가운데 칸 숨김)
+  const side = Math.floor(C / 2), mid = mc ? 1 : 0;
+  document.querySelectorAll('.room .zl').forEach(z => z.style.gridTemplateColumns = `${side}fr ${mid ? '1fr' : '0'} ${side}fr`);
+  document.querySelectorAll('.zmid').forEach(z => z.classList.toggle('hide', !ZONES['가운데'].length));
 }
+function applyHall() { document.querySelector('.room').classList.toggle('hall-left', exam.hall === 'left'); }
+buildSeats(); applyHall();
 
 const BASELINE = ['감독관 태블릿', '시연용 핫스팟'];   // 원래 있던 신호 (기준선)
 const SCRIPT = [
@@ -345,11 +422,14 @@ function judge(s) {
   else why = live ? '' : '짧은 신호';
   return { ...s, min, inside, live, state, why };
 }
-const signals = () => SCRIPT.filter(s => t >= s.from).map(judge);
+let LIVE = false, snap = null, liveSig = [], lastPhase = null, connLost = false;
+const signals = () => LIVE ? liveSig : SCRIPT.filter(s => t >= s.from && (s.zone === '복도' || (ZONES[s.zone] || []).length)).map(judge);   // 자리 없는 구역(짝수 배치의 가운데)은 제외
+const curMin = () => LIVE ? Math.round((snap && snap.exam_min) || 0) : toMin(t);
 const LABEL = { check: '확인 필요', watch: '지켜보는 중' };
 const mmss = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 
 function render() {
+  if (LIVE) return renderLive();
   const info = examInfo(), sig = signals(), hot = sig.filter(s => s.state === 'check');
   const prepLeft = Math.max(0, PREP_S - prep);
   $('examName').textContent = info.name + ' (' + info.min + '분)';
@@ -376,10 +456,11 @@ function render() {
     $('bar').style.width = '100%';
   }
   $('pickrow').classList.toggle('hide', stage !== 0);
-  $('pickName').textContent = info.name + ' (' + info.min + '분)';
+  $('pickName').textContent = `${info.name} (${info.min}분)  ·  교실 ${exam.rows}줄×${exam.cols}열, 복도 ${exam.hall === 'left' ? '왼쪽' : '오른쪽'}`;
   $('app').classList.toggle('break', stage === 2);
 
-  Object.entries(seats).forEach(([n, d]) => d.className = 'seat' + (seatZone(+n[0], +n[2]) === '가운데' ? ' mid' : ''));
+  const many = exam.cols >= 7 ? ' many' : '';
+  Object.entries(seats).forEach(([n, d]) => { const r = +d.dataset.r, c = +d.dataset.c; d.className = 'seat' + many + (seatZone(r, c) === '가운데' ? ' mid' : ''); });
   sig.forEach(s => { if (s.state !== 'ok' && ZONES[s.zone]) ZONES[s.zone].forEach(n => seats[n].classList.add(s.state)); });
   document.querySelectorAll('[data-zl]').forEach(el => { const z = sig.find(s => s.zone === el.dataset.zl && s.state !== 'ok'); el.className = z ? z.state : ''; });
 
@@ -396,13 +477,13 @@ function render() {
 
 /* 기록: 일이 생길 때만 한 줄 */
 const BADGE = { check: '확인 필요', watch: '지켜보는 중', ok: '정상', info: '안내' };
-const seatList = z => z === '가운데' ? '3줄 전체 + 3열 전체' : (ZONES[z] || []).join(', ');
+const seatList = z => (ZONES[z] || []).join(', ') || '없음';
 function addLog(cls, text, sub, badge) {
   const e = $('logEmpty'); if (e) e.remove();
   text = text.replace(' · ', ' '); sub = sub && sub.replace(/ · /g, ', ');
   const li = document.createElement('li');
   li.className = 'item ' + cls;
-  li.innerHTML = `<span class="when">${stage === 0 ? '준비' : toMin(t) + '분'}</span>
+  li.innerHTML = `<span class="when">${stage === 0 ? '준비' : curMin() + '분'}</span>
     <span class="tx"><b>${text}</b>${sub ? `<span>${sub}</span>` : ''}</span>
     <span class="bd ${badge ? 'k' : ''}">${badge || BADGE[cls]}</span>`;
   $('list').prepend(li);
@@ -439,7 +520,7 @@ function toBreak() {
   render();
   if (!hot.length) return;
   $('bZone').textContent = hot.map(h => h.zone).join(', ');
-  $('chips').innerHTML = hot.map(h => `<div class="zg"><em>${h.zone}</em>${ZONES[h.zone].map(n => `<span>${n}</span>`).join('')}</div>`).join('');
+  $('chips').innerHTML = hot.filter(h => ZONES[h.zone] && ZONES[h.zone].length).map(h => `<div class="zg"><em>${h.zone}</em>${ZONES[h.zone].map(n => `<span>${n}</span>`).join('')}</div>`).join('');
   $('breakDesc').innerHTML = hot.map(h => `${h.zone}: ${h.kind} 신호, 교실 안 누적 ${h.inside}분`).join('<br>');
   $('breakDim').classList.add('show');
   if ($('swSound').classList.contains('on')) beep();
@@ -459,20 +540,28 @@ function renderPick() {
   if (k === 'sn') h += `<div class="q">2. 교시</div><div class="tiles c5">${SUNEUNG.map(x => {
     const [n, ...r] = x.name.split(' '); return tile(`data-s="${x.id}"`, exam.sid === x.id, n, r.join(' ') + '<br>' + x.min + '분'); }).join('')}</div>`;
   if (k === 'custom') h += `<div class="q">2. 시험 시간</div><div class="bigstep"><button data-d="-5" aria-label="5분 줄이기">−</button><b>${exam.custom}분</b><button data-d="5" aria-label="5분 늘리기">+</button></div>`;
+  h += `<div class="q">${k === 'sn' || k === 'custom' ? 3 : 2}. 교실 배치</div><div class="lay">
+    <span class="f">가로(열)<span class="bigstep"><button data-lc="-1" aria-label="열 줄이기">−</button><b>${exam.cols}</b><button data-lc="1" aria-label="열 늘리기">+</button></span></span>
+    <span class="f">세로(줄)<span class="bigstep"><button data-lr="-1" aria-label="줄 줄이기">−</button><b>${exam.rows}</b><button data-lr="1" aria-label="줄 늘리기">+</button></span></span>
+    <span class="f">복도<span class="seg"><button data-h="left" class="${exam.hall === 'left' ? 'on' : ''}">왼쪽</button><button data-h="right" class="${exam.hall !== 'left' ? 'on' : ''}">오른쪽</button></span></span>
+  </div>`;
   const info = examInfo();
-  h += `<button class="go" id="pickDone">${info.name} ${info.min}분 적용</button>`;
+  h += `<button class="go" id="pickDone">${info.name} ${info.min}분, ${exam.rows}줄×${exam.cols}열, 복도 ${exam.hall === 'left' ? '왼쪽' : '오른쪽'} 적용</button>`;
   const el = $('examPick'); el.innerHTML = h;
   el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => setExam({ kind: b.dataset.k }));
   el.querySelectorAll('[data-s]').forEach(b => b.onclick = () => setExam({ sid: b.dataset.s }));
   el.querySelectorAll('[data-d]').forEach(b => b.onclick = () => setExam({ custom: exam.custom + Number(b.dataset.d) }));
+  el.querySelectorAll('[data-lc]').forEach(b => b.onclick = () => setExam({ cols: exam.cols + Number(b.dataset.lc) }));
+  el.querySelectorAll('[data-lr]').forEach(b => b.onclick = () => setExam({ rows: exam.rows + Number(b.dataset.lr) }));
+  el.querySelectorAll('[data-h]').forEach(b => b.onclick = () => setExam({ hall: b.dataset.h }));
   $('pickDone').onclick = () => $('examDim').classList.remove('show');
 }
 $('chgExam').onclick = () => { $('examDim').classList.add('show'); renderPick(); };
 
 /* 버튼 */
-$('next').onclick = () => { if (stage === 0 && prep >= PREP_S) startExam(); else if (stage === 1) toBreak(); else if (stage === 2) startPrep(); };
+$('next').onclick = () => { if (LIVE) return liveNext(); if (stage === 0 && prep >= PREP_S) startExam(); else if (stage === 1) toBreak(); else if (stage === 2) startPrep(); };
 $('okBreak').onclick = () => $('breakDim').classList.remove('show');
-['examDim', 'setDim'].forEach(id => $(id).onclick = e => { if (e.target.id === id) $(id).classList.remove('show'); });
+['examDim', 'setDim', 'calDim'].forEach(id => $(id).onclick = e => { if (e.target.id === id) $(id).classList.remove('show'); });
 $('gear').onclick = () => $('setDim').classList.add('show');
 $('closeSet').onclick = () => $('setDim').classList.remove('show');
 $('swBig').onclick = e => { e.currentTarget.classList.toggle('on'); document.body.classList.toggle('big'); };
@@ -483,7 +572,8 @@ $('reset').onclick = () => {      // 실수 방지: 3초 안에 두 번
   const b = $('reset');
   if (!b.classList.contains('arm')) { b.classList.add('arm'); b.textContent = '한 번 더 누르면 처음부터'; armT = setTimeout(() => { b.classList.remove('arm'); b.textContent = '처음부터 다시 하기'; }, 3000); return; }
   clearTimeout(armT); b.classList.remove('arm'); b.textContent = '처음부터 다시 하기';
-  $('setDim').classList.remove('show'); $('breakDim').classList.remove('show'); startPrep();
+  $('setDim').classList.remove('show'); $('breakDim').classList.remove('show');
+  if (LIVE) ctl('reset'); else startPrep();
 };
 function setMode(m) {
   if (m === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', m);
@@ -499,11 +589,189 @@ const pad = n => String(n).padStart(2, '0');
 function tick() {
   const d = new Date(), w = '일월화수목금토'[d.getDay()];
   $('now').textContent = `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())}(${w}) ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  $('upd').textContent = `마지막 갱신 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  if (!LIVE) $('upd').textContent = `마지막 갱신 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
 }
 tick(); setInterval(tick, 1000);
 
-startPrep();
+/* ───────────── 실시간 모드 (server.py) ───────────── */
+const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const KIND = { WIFI: 'Wi-Fi', BLE: '블루투스' };
+const LV = { '높음': 'check', '관찰': 'watch', '낮음': 'ok' };
+const SIDS = ['A', 'B', 'C', 'D'];
+const isReplay = () => snap && snap.mode !== 'live';
+const liveStage = p => p === '시험 중' ? 1 : p === '쉬는 시간' ? 2 : 0;
+
+function ctl(cmd, q) {
+  return fetch('/control/' + cmd + (q || ''), { method: 'POST' }).then(poll).catch(() => {});
+}
+function liveNext() {
+  if (!snap || isReplay()) return;
+  const p = snap.phase;
+  if (p === '대기') ctl('baseline');
+  else if (p === '기준선') { $('examDim').classList.remove('show'); ctl('start', '?min=' + examInfo().min); }
+  else if (p === '시험 중') ctl('end');
+  else if (p === '쉬는 시간') { $('breakDim').classList.remove('show'); ctl('reset'); }
+}
+
+function onSnap(s) {
+  connLost = false; snap = s;
+  liveSig = (s.signals || []).map(x => ({ id: x.no, kind: KIND[x.kind] || x.kind, zone: x.near, state: LV[x.level] || 'ok',
+    inside: Math.round(x.minutes), min: Math.round(x.minutes), live: x.active, why: x.why || '', seats: x.seats || '' }));
+  const p = s.phase;
+  stage = liveStage(p);
+  if (p !== lastPhase) {
+    if (lastPhase === null) addLog('info', '화면 연결됨', isReplay() ? '서버의 가짜 시험 재생 (센서 없이 보기)' : '실시간 센서 데이터');
+    else if (p === '대기') { $('list').innerHTML = ''; prev = {}; }
+    else if (p === '기준선') { if (!isReplay()) { $('list').innerHTML = ''; prev = {}; } addLog('info', '기준 측정 시작', '지금 켜져 있는 신호를 "원래 있던 신호"로 기억합니다. 대역 기기는 아직 끄세요'); }
+    else if (p === '시험 중') { prev = {}; addLog('info', '시험 시작', `${examInfo().name} ${s.exam_total}분 · 지금부터 새로 잡히는 신호만 기록`); }
+    else if (p === '쉬는 시간') showBreak(lastPhase === '시험 중');
+    lastPhase = p;
+  }
+  if (stage === 1) logLive();
+  render();
+  if ($('calDim').classList.contains('show')) renderCalib();
+}
+function poll() {
+  return fetch('/state', { cache: 'no-store' }).then(r => r.json()).then(onSnap).catch(() => { connLost = true; render(); });
+}
+
+function logLive() {
+  liveSig.forEach(s => {
+    const p = prev[s.id];
+    if (s.state !== 'ok' && (!p || p.state !== s.state))
+      addLog(s.state, `${s.zone === '복도' ? '복도' : s.zone + ' 구역'} · ${LABEL[s.state]}`,
+        `${s.id}번 · ${s.kind} · 교실 안 누적 ${s.inside}분${s.why ? ' · ' + s.why : ''}${(ZONES[s.zone] || []).length ? ' · 자리 ' + seatList(s.zone) : (s.seats ? ' · 자리 ' + s.seats : '')}`);
+    else if (p && p.state !== 'ok' && p.live && !s.live)
+      addLog('ok', `${s.id}번 신호 사라짐`, `${s.zone} · 교실 안 ${s.inside}분 동안 잡힘`);
+    prev[s.id] = { state: s.state, live: s.live };
+  });
+}
+
+function showBreak(popup) {
+  const hot = liveSig.filter(s => s.state === 'check');
+  const zones = [...new Set(hot.map(h => h.zone))];
+  addLog(hot.length ? 'check' : 'info', '시험 종료 · 쉬는 시간',
+    (hot.length ? `확인할 구역 ${zones.length}곳: ${zones.join(', ')}` : '확인할 구역 없음') + (isReplay() ? '' : ' · 시험 기록 저장됨 (data/exams/)'),
+    hot.length ? '확인 필요' : '안내');
+  if (!popup || !hot.length) return;
+  $('bZone').textContent = zones.join(', ');
+  $('chips').innerHTML = zones.map(z => `<div class="zg"><em>${esc(z)}</em>${(ZONES[z] || []).map(n => `<span>${n}</span>`).join('')}</div>`).join('');
+  $('breakDesc').innerHTML = hot.map(h => `${esc(h.zone)}: ${esc(h.kind)} 신호, 교실 안 누적 ${h.inside}분`).join('<br>');
+  $('breakDim').classList.add('show');
+  if ($('swSound').classList.contains('on')) beep();
+}
+
+function renderLive() {
+  const s = snap || {}, p = s.phase, info = examInfo(), sig = liveSig, hot = sig.filter(x => x.state === 'check');
+  const total = stage === 0 ? info.min : (s.exam_total || info.min);
+  $('examName').textContent = info.name + ' (' + total + '분)';
+  $('pickName').textContent = info.name + ' (' + info.min + '분)';
+  $('pickrow').classList.toggle('hide', stage !== 0 || isReplay());
+  $('app').classList.toggle('break', stage === 2);
+  $('rowDead').classList.add('hide');
+  $('calibOpen').classList.toggle('hide', isReplay() || stage !== 0);
+
+  // 센서 상태 (10초 안에 데이터가 온 센서 = 정상)
+  const age = s.sensor_age || {}, ok = k => age[k] != null && age[k] < 10, nOk = SIDS.filter(ok).length;
+  SIDS.forEach(k => $('s' + k).classList.toggle('bad', !ok(k)));
+  $('sensorSt').classList.toggle('bad', nOk < 4);
+  $('sensorTxt').textContent = SIDS.map(k => `${k} ${ok(k) ? '정상' : '응답 없음'}`).join(' / ') +
+    (nOk === 4 ? '' : nOk >= 3 ? ' (3대로 판정)' : ' (3대 이상 필요)');
+  $('baseTxt').textContent = p === '기준선' && s.base ? `원래 있던 신호 ${s.base.ids}개 기억 중` : `기준 신호 ${s.baseline_count || 0}개 제외`;
+  $('saveTxt').textContent = isReplay() ? '서버 가짜 시험 재생 (저장 안 함)' : `신호 지도: ${s.map || ''} · 기록 저장: data/exams/`;
+  $('saveTxt').style.color = s.map && s.map.startsWith('가짜') ? 'var(--red)' : '';
+  $('upd').textContent = connLost ? '서버 연결 끊김' : `마지막 갱신 ${s.updated || ''}`;
+
+  const st = $('stage'), nb = $('next');
+  if (connLost) {
+    st.className = 'stage alert'; st.textContent = '연결 끊김';
+    $('msg').textContent = '서버와 연결이 끊겼습니다. 노트북의 server.py 와 핫스팟을 확인하십시오.';
+  } else if (stage === 0) {
+    st.className = 'stage'; st.textContent = '시험 전';
+    $('timeLabel').textContent = '시험 시간'; $('clock').textContent = mmss(info.min * 60);
+    const b = s.base || {};
+    if (p === '대기') {
+      $('msg').textContent = nOk >= 3 ? '센서가 켜졌습니다. 대역 기기를 끈 채로 [기준 측정 시작]을 누르십시오.' : '센서를 켜고 기다리십시오 (3대 이상 필요).';
+      $('bar').style.width = '0%';
+    } else if (b.sec == null) {
+      $('msg').textContent = '기준 신호를 측정하고 있습니다'; $('bar').style.width = '50%';
+    } else if (b.sec < b.need) {
+      $('msg').textContent = `기준 신호를 측정하고 있습니다 (${b.need - b.sec}초)`;
+    } else if (b.sec < b.good) {
+      $('msg').textContent = `시작할 수 있습니다. ${b.good - b.sec}초 더 기다리면 더 정확합니다.`;
+    } else $('msg').textContent = '측정 완료. 수험생 착석 후 [시험 시작]을 누르십시오.';
+    if (b.sec != null) $('bar').style.width = Math.min(100, b.sec / b.good * 100) + '%';
+  } else if (stage === 1) {
+    st.className = 'stage run'; st.textContent = '시험 중';
+    $('msg').textContent = '시험 중에는 기록만 합니다. 확인은 쉬는 시간에 하십시오.';
+    $('timeLabel').textContent = '남은 시간';
+    $('clock').textContent = mmss(Math.max(0, Math.round((total - (s.exam_min || 0)) * 60)));
+    $('bar').style.width = Math.min(100, (s.exam_min || 0) / total * 100) + '%';
+  } else {
+    const zones = [...new Set(hot.map(h => h.zone))];
+    st.className = 'stage ' + (hot.length ? 'alert' : 'done'); st.textContent = '쉬는 시간';
+    $('msg').textContent = hot.length ? `${zones.join(', ')} 구역을 확인하십시오.` : '확인할 구역이 없습니다.';
+    $('timeLabel').textContent = '시험 끝'; $('clock').textContent = '00:00';
+    $('bar').style.width = '100%';
+  }
+
+  Object.entries(seats).forEach(([n, d]) => d.className = 'seat' + (exam.cols >= 7 ? ' many' : '') + (seatZone(+d.dataset.r, +d.dataset.c) === '가운데' ? ' mid' : ''));
+  const rank = { check: 2, watch: 1, ok: 0 }, zoneState = {};
+  sig.forEach(x => { if (x.state !== 'ok' && (!zoneState[x.zone] || rank[x.state] > rank[zoneState[x.zone]])) zoneState[x.zone] = x.state; });
+  Object.entries(zoneState).forEach(([z, k]) => (ZONES[z] || []).forEach(n => seats[n].classList.add(k)));
+  document.querySelectorAll('[data-zl]').forEach(el => el.className = zoneState[el.dataset.zl] || '');
+
+  const cnt = k => sig.filter(x => x.state === k).length;
+  $('counts').innerHTML = stage === 0 ? '' : `확인 필요 <b class="n-check">${cnt('check')}</b>건, 관찰 <b class="n-watch">${cnt('watch')}</b>건, 낮음 ${cnt('ok')}건`;
+  if (!$('list').children.length) $('list').innerHTML = '<li class="empty" id="logEmpty">기록이 없습니다</li>';
+
+  if (isReplay()) { nb.disabled = true; nb.innerHTML = '가짜 시험 자동 재생 중 <small>센서 없이 화면 보기</small>'; }
+  else if (connLost) { nb.disabled = true; nb.innerHTML = '연결을 기다리는 중…'; }
+  else if (p === '대기') { nb.disabled = nOk < 3; nb.innerHTML = '기준 측정 시작 <small>약 1분</small>'; }
+  else if (stage === 0) { const b = s.base || {}; const left = (b.need || 0) - (b.sec || 0);
+    nb.disabled = left > 0; nb.innerHTML = left > 0 ? `기준 측정 중… <small>${left}초</small>` : '시험 시작'; }
+  else if (stage === 1) { nb.disabled = false; nb.innerHTML = `쉬는 시간으로 <small>${total}분이 되면 자동</small>`; }
+  else { nb.disabled = false; nb.innerHTML = '다음 시험 준비'; }
+}
+
+/* 보정 창 */
+let pickZone = '앞왼쪽', pickId = null, candT = null;
+function cmsg(text, kind) { const m = $('cmsg'); m.textContent = text; m.className = 'cmsg ' + (kind || ''); }
+function calCall(cmd, body) {
+  return fetch('/calib/' + cmd, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) })
+    .then(r => r.json()).then(r => { cmsg(r.msg, r.ok ? 'good' : 'bad'); return poll(); }).catch(() => cmsg('서버 연결 끊김', 'bad'));
+}
+function renderCalib() {
+  const c = snap && snap.calib; if (!c) return;
+  const ZL = ['앞왼쪽', '앞오른쪽', '가운데', '뒤왼쪽', '뒤오른쪽', '복도'];
+  $('zgrid').innerHTML = ZL.map(z => `<button class="tile ${z === pickZone ? 'on' : ''}" data-z="${z}"><b>${z}</b><span>${c.points[z] || 0}자리 기록</span></button>`).join('');
+  $('zgrid').querySelectorAll('[data-z]').forEach(b => b.onclick = () => { pickZone = b.dataset.z; renderCalib(); });
+  const rec = !!c.recording;
+  $('cStart').disabled = rec; $('cStop').disabled = !rec;
+  if (rec) cmsg(`${c.recording.zone} 기록 중… ${c.recording.sec}초 (6초 이상 지나면 [기록 끝])`, 'good');
+}
+function loadCand() {
+  fetch('/calib/candidates', { cache: 'no-store' }).then(r => r.json()).then(list => {
+    if (!list.length) { $('cand').innerHTML = '<div class="quiet">최근 8초 동안 잡힌 신호가 없어요. 센서와 비콘 전원을 확인하세요.</div>'; return; }
+    if (!pickId) pickId = list[0].id;
+    $('cand').innerHTML = list.map(x => `<label><input type="radio" name="cid" value="${esc(x.id)}" ${x.id === pickId ? 'checked' : ''}>
+      <span>${x.kind === 'WIFI' ? 'Wi-Fi' : '블루투스'} · <code>${esc(x.id)}</code></span><span class="m">최대 ${x.max} dBm · 센서 ${x.sensors}대</span></label>`).join('');
+    $('cand').querySelectorAll('input').forEach(i => i.onchange = () => { pickId = i.value; });
+  }).catch(() => {});
+}
+$('calibOpen').onclick = () => { $('setDim').classList.remove('show'); $('calDim').classList.add('show'); renderCalib(); loadCand(); clearInterval(candT); candT = setInterval(loadCand, 2000); };
+$('calClose').onclick = () => { $('calDim').classList.remove('show'); clearInterval(candT); };
+$('cStart').onclick = () => calCall('start', { zone: pickZone, id: pickId });
+$('cStop').onclick = () => calCall('stop');
+$('cUndo').onclick = () => calCall('undo');
+$('cApply').onclick = () => calCall('apply');
+
+/* 시작: 서버가 있으면 실시간, 없으면(파일로 열기 또는 ?demo) 가짜 데이터 시연 */
+if (location.protocol.startsWith('http') && !/[?&]demo/.test(location.search)) {
+  fetch('/state', { cache: 'no-store' }).then(r => { if (!r.ok) throw 0; return r.json(); })
+    .then(s => { LIVE = true; onSnap(s); setInterval(poll, 1000); })
+    .catch(() => startPrep());
+} else startPrep();
 </script>
 </body>
 </html>
