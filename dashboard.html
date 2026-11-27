@@ -627,7 +627,8 @@ function renderLive() {
   $('sensorTxt').textContent = SIDS.map(k => `${k} ${ok(k) ? '정상' : '응답 없음'}`).join(' / ') +
     (nOk === 4 ? '' : nOk >= 3 ? ' (3대로 판정)' : ' (3대 이상 필요)');
   $('baseTxt').textContent = p === '기준선' && s.base ? `원래 있던 신호 ${s.base.ids}개 기억 중` : `기준 신호 ${s.baseline_count || 0}개 제외`;
-  $('saveTxt').textContent = isReplay() ? '서버 가짜 시험 재생 (저장 안 함)' : '기록 저장: data/exams/';
+  $('saveTxt').textContent = isReplay() ? '서버 가짜 시험 재생 (저장 안 함)' : `신호 지도: ${s.map || ''} · 기록 저장: data/exams/`;
+  $('saveTxt').style.color = s.map && s.map.startsWith('가짜') ? 'var(--red)' : '';
   $('upd').textContent = connLost ? '서버 연결 끊김' : `마지막 갱신 ${s.updated || ''}`;
 
   const st = $('stage'), nb = $('next');
