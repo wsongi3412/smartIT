@@ -4,7 +4,10 @@
   ※ 중요: Wi-Fi + 블루투스를 같이 써서 기본 설정에는 안 들어감(125%).
      Arduino IDE → 툴 → Partition Scheme → "Huge APP (3MB No OTA/1MB SPIFFS)" 로 바꾸고 업로드 (52%).
 
-  하는 일: 1초 BLE 스캔 ↔ 1초 Wi-Fi 패킷 엿듣기(고정 채널)를 번갈아 반복.
+  하는 일: 1초 BLE 스캔 ↔ 1초 Wi-Fi 패킷 엿듣기를 번갈아 반복.
+          Wi-Fi 1초 동안 채널 1·6·11(+핫스팟 채널)을 돌아가며 듣는다 (11-27, WIFI_HOP).
+          → 시험장 기기가 다른 핫스팟·공유기(다른 채널)에 붙어 있어도 잡힘. 5GHz는 ESP32가 못 들음.
+          보내기(ESP-NOW)는 늘 핫스팟 채널로 돌아와서 한다 (수신기는 그 채널에 있음).
           1초 동안 같은 기기에서 온 패킷을 묶어 한 줄로 출력 (시리얼이 넘치지 않게).
   보내는 길 (11-24): ESP-NOW 무선 → 노트북에 꽂힌 수신기(esp32_gateway)가 같은 줄로 출력.
           → 센서는 보조배터리·USB 충전기로만 켜면 됨 (노트북 연결 불필요).
@@ -36,7 +39,8 @@
 #define BAUD      460800  // CH340 보드는 921600에서 글자가 깨짐 (11-25 실기 확인). serial_reader.py --baud 와 같게
 #define HOTSPOT_SSID "iPhone"   // ← 시연 핫스팟 이름. 켜질 때 이 핫스팟 채널을 찾아 맞춤 (아이폰: "호환성 최대화" 켜야 2.4GHz)
 #define SLOT_MS   1000
-#define MAXE      48      // 1초 동안 기억할 최대 기기 수
+#define MAXE      96      // 1초 동안 기억할 최대 기기 수 (채널을 돌면 기기가 늘어서 48→96, 11-27)
+#define WIFI_HOP  1       // 1 = Wi-Fi 칸 동안 1·6·11번(+핫스팟 채널) 돌기, 0 = 핫스팟 채널만 (예전 방식)
 // 수신기(esp32_gateway) 주소. 수신기 시리얼 첫 줄 "# gateway MAC ..." 을 보고 바꾸면 재전송까지 되어 더 안정적.
 // 그대로(FF:...) 두면 방송으로 보냄 (설정 없이 됨, 대신 재전송 없음).
 #define LED_PIN   2       // 보드 파란 LED (대부분의 ESP32 DevKit). 없는 보드면 아무 일도 안 일어남
@@ -145,6 +149,16 @@ static void sniffer(void* buf, wifi_promiscuous_pkt_type_t type) {
 
 // 켜질 때 핫스팟(HOTSPOT_SSID)을 찾아 그 채널로 맞춘다 (아이폰은 채널을 못 고름). 못 찾으면 WIFI_CH.
 static uint8_t wifiCh = WIFI_CH;
+static uint8_t hopCh[4];
+static uint8_t hopN = 0;
+static void makeHopList() {           // 핫스팟 채널을 맨 앞에, 그다음 1·6·11 중 나머지
+  hopN = 0;
+  hopCh[hopN++] = wifiCh;
+#if WIFI_HOP
+  const uint8_t base[3] = {1, 6, 11};
+  for (int i = 0; i < 3; i++) if (base[i] != wifiCh) hopCh[hopN++] = base[i];
+#endif
+}
 static void findHotspotChannel() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
@@ -170,6 +184,7 @@ void setup() {
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);          // 핫스팟 찾는 동안 계속 켜짐
   findHotspotChannel();
+  makeHopList();
   digitalWrite(LED_PIN, LOW);
   xTaskCreate(ledTask, "led", 1536, nullptr, 1, nullptr);
   wifi_promiscuous_filter_t filt = { .filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA };
@@ -198,6 +213,9 @@ void setup() {
   scan->setWindow(99);
   Serial.printf("# ExamSentry sensor %s ready, wifi ch %d, ESP-NOW -> %02x:%02x:%02x:%02x:%02x:%02x\n", SENSOR_ID, wifiCh,
                 GATEWAY_MAC[0], GATEWAY_MAC[1], GATEWAY_MAC[2], GATEWAY_MAC[3], GATEWAY_MAC[4], GATEWAY_MAC[5]);
+  Serial.printf("# wifi listen channels:");
+  for (int i = 0; i < hopN; i++) Serial.printf(" %d", hopCh[i]);
+  Serial.printf(" (%d ms each)\n", SLOT_MS / hopN);
 }
 
 void loop() {
@@ -206,10 +224,13 @@ void loop() {
   flush("BLE");
   ledBlinks = hotspotFound ? 1 : 3;     // 1초마다 (BLE 칸 끝)
 
-  esp_wifi_set_promiscuous(true);       // 1초 Wi-Fi
-  esp_wifi_set_channel(wifiCh, WIFI_SECOND_CHAN_NONE);
-  delay(SLOT_MS);
+  esp_wifi_set_promiscuous(true);       // 1초 Wi-Fi: 채널을 돌아가며 나눠 듣기
+  for (int i = 0; i < hopN; i++) {
+    esp_wifi_set_channel(hopCh[i], WIFI_SECOND_CHAN_NONE);
+    delay(SLOT_MS / hopN);
+  }
   esp_wifi_set_promiscuous(false);
+  esp_wifi_set_channel(wifiCh, WIFI_SECOND_CHAN_NONE);   // 보내기 전에 핫스팟(수신기) 채널로 돌아오기
   flush("WIFI");
   ledBlinks = hotspotFound ? 1 : 3;     // 1초마다 (Wi-Fi 칸 끝)
 }
