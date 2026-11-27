@@ -9,6 +9,8 @@ ESP32 한 줄 출력:  A,BLE,aa:bb:cc:dd:ee:ff,-58,A,1     (센서,종류,주소
 준비:  pip install pyserial
 실행:  python serial_reader.py data/live.csv
        python serial_reader.py data/live.csv --ports /dev/cu.usbserial-0001 /dev/cu.usbserial-0002
+       윈도우:  python serial_reader.py data/live.csv            (COM 포트 자동으로 찾음)
+                python serial_reader.py data/live.csv --ports COM3
 """
 import argparse
 import glob
@@ -24,9 +26,22 @@ lock = threading.Lock()
 counts = Counter()
 
 
+USB_SERIAL_VID = {0x1A86, 0x10C4, 0x0403, 0x303A}   # CH340(우리 보드), CP210x, FTDI, Espressif
+
+
 def find_ports():
-    pats = ["/dev/cu.usbserial*", "/dev/cu.SLAB_USBtoUART*", "/dev/cu.wchusbserial*", "/dev/ttyUSB*", "COM*"]
-    return sorted({p for pat in pats for p in glob.glob(pat)})
+    """맥: /dev/cu.usbserial-…, 윈도우: COM3 같은 이름. 윈도우 COM 포트는 파일이 아니라서 pyserial 목록으로 찾는다."""
+    found = set()
+    try:
+        from serial.tools import list_ports
+        for p in list_ports.comports():
+            if p.vid in USB_SERIAL_VID:
+                found.add(p.device)
+    except ImportError:
+        pass
+    pats = ["/dev/cu.usbserial*", "/dev/cu.SLAB_USBtoUART*", "/dev/cu.wchusbserial*", "/dev/ttyUSB*"]
+    found |= {p for pat in pats for p in glob.glob(pat)}
+    return sorted(found)
 
 
 def read_port(port, out, baud):
@@ -65,7 +80,7 @@ if __name__ == "__main__":
     if not ports:
         sys.exit("ESP32 포트를 못 찾음. USB 연결과 드라이버(CP210x/CH340)를 확인하세요.")
     new = not os.path.exists(a.out)
-    out = open(a.out, "a", buffering=1)
+    out = open(a.out, "a", buffering=1, encoding="utf-8")
     if new:
         out.write("t,sensor,kind,id,rssi,frame,n\n")
     for p in ports:

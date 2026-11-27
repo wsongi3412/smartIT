@@ -23,7 +23,7 @@ if __name__ == "__main__":
     path = a.calib_csv.replace(".csv", "_labels.csv")
     new = not os.path.exists(path)
     dev = hash_id(a.id)
-    with open(path, "a", newline="") as f:
+    with open(path, "a", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         if new:
             w.writerow(["start", "end", "id", "zone"])

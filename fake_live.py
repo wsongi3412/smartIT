@@ -111,7 +111,7 @@ if __name__ == "__main__":
     ap.add_argument("--auto-start", type=float, default=0, help="서버 없이 돌릴 때 이 초 뒤 시험 시작으로 침")
     a = ap.parse_args()
     new = not os.path.exists(a.out)
-    f = open(a.out, "a", buffering=1)
+    f = open(a.out, "a", buffering=1, encoding="utf-8")
     if new:
         f.write("t,sensor,kind,id,rssi,frame,n\n")
     rng = np.random.default_rng(0)

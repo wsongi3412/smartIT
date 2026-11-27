@@ -238,14 +238,14 @@ def make_hard(seed, case, exam_min=50, baseline_s=120, wall_db=WALL_DB):
 
 
 def save_rows(path, rows):
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["t", "sensor", "kind", "id", "rssi", "frame", "n"])
         w.writerows(rows)
 
 
 def save_labels(path, labels):
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["start", "end", "id", "zone"])
         w.writerows(labels)
@@ -267,7 +267,7 @@ if __name__ == "__main__":
     else:
         rows, truth, v = make_exam(a.seed, wall_db=a.wall_db, variant=a.variant)
         save_rows(a.out, rows)
-        with open(a.out.replace(".csv", "_truth.csv"), "w", newline="") as f:
+        with open(a.out.replace(".csv", "_truth.csv"), "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["id", "level", "note"])
             w.writerows((k, *v) for k, v in truth.items())

@@ -20,14 +20,14 @@ RF_FEATURES = [k for k in FEATURES if k != "mean_rssi"]
 
 # ---------------- 읽기 ----------------
 def load_rows(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         r = csv.reader(f)
         next(r)
         return [(float(t), s, k, i, int(v), fr, int(n)) for t, s, k, i, v, fr, n in r]
 
 
 def load_labels(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         r = csv.DictReader(f)
         return [(float(x["start"]), float(x["end"]), x["id"], x["zone"]) for x in r]
 

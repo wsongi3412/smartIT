@@ -57,7 +57,7 @@ class State:
         self.whitelist = set()
         wl = os.path.join(HERE, "whitelist.txt")
         if os.path.exists(wl):   # 팀 노트북·핫스팟·태블릿 MAC (한 줄에 하나)
-            self.whitelist = {hash_id(x.strip()) for x in open(wl) if x.strip() and not x.startswith("#")}
+            self.whitelist = {hash_id(x.strip()) for x in open(wl, encoding="utf-8") if x.strip() and not x.startswith("#")}
         self.exam_min = EXAM_MIN          # 실시간: 화면에서 고른 시험 시간(분). [시험 시작] 때 정해짐
         if a.live:
             self.phase, self.start, self.end_at = "대기", None, None
@@ -96,15 +96,15 @@ class State:
             folder = os.path.join(HERE, "data", "exams")
             os.makedirs(folder, exist_ok=True)
             base = os.path.join(folder, time.strftime("exam_%Y%m%d_%H%M%S"))
-            with open(base + ".csv", "w") as f:
+            with open(base + ".csv", "w", encoding="utf-8") as f:
                 f.write("t,sensor,kind,id,rssi,frame,n\n")
                 for r in rows:
                     if r[0] <= end:
                         f.write(",".join(str(x) for x in (round(r[0], 3),) + tuple(r[1:])) + "\n")
-            with open(base + "_meta.json", "w") as f:
+            with open(base + "_meta.json", "w", encoding="utf-8") as f:
                 json.dump({"scale": self.a.scale, "end": round(end, 3)}, f)
             new_ids = sorted({r[3] for r in rows if 0 <= r[0] <= end} - {r[3] for r in rows if r[0] < 0})
-            with open(base + "_truth.csv", "w") as f:
+            with open(base + "_truth.csv", "w", encoding="utf-8") as f:
                 f.write("id,level,note\n# level 칸에 높음/관찰/낮음, note 에 무엇이었는지 적기 (숨긴 기기 MAC은 원래 주소로 적어도 됨)\n")
                 for i in new_ids:
                     f.write(f"{i},,\n")
@@ -119,7 +119,7 @@ class State:
         base_from = getattr(self, "base_from", 0)
         origin = self.start or time.time()
         self.last_seen = {}
-        with open(self.a.live) as f:
+        with open(self.a.live, encoding="utf-8") as f:
             next(f, None)
             for line in f:
                 p = line.rstrip().split(",")
@@ -137,7 +137,7 @@ class State:
         rows = []
         if not os.path.exists(self.a.live):
             return rows
-        with open(self.a.live) as f:
+        with open(self.a.live, encoding="utf-8") as f:
             next(f, None)
             for line in f:
                 p = line.rstrip().split(",")
@@ -182,7 +182,7 @@ class State:
                 if n < 2:
                     return {"ok": False, "msg": f"쓸 수 있는 2초 창이 {n}개뿐이에요. 비콘이 켜져 있는지 보고 다시 기록하세요"}
                 self.calib_labels.append((c["t0"], t1, c["id"], c["zone"]))
-                with open(self.calib_path, "w") as f:
+                with open(self.calib_path, "w", encoding="utf-8") as f:
                     f.write("start,end,id,zone\n")
                     for l in self.calib_labels:
                         f.write(f"{l[0]:.3f},{l[1]:.3f},{l[2]},{l[3]}\n")

@@ -270,6 +270,23 @@ smartIT/
 
 ---
 
+## 🪟 윈도우 노트북으로 시연하기 (11-27)
+
+맥과 똑같이 돌아가게 맞춰 둠 (파일은 모두 UTF-8로 읽고 씀, COM 포트 자동 찾기). **아직 윈도우 실기로는 안 돌려 봄** → 대회 전에 한 번 리허설.
+
+1. **파이썬 3.10 이상** 설치 (설치 화면에서 "Add python.exe to PATH" 체크) → `pip install -r requirements.txt`
+2. **수신기 꽂기** → 장치 관리자 → "포트(COM & LPT)"에 `USB-SERIAL CH340 (COM3)` 같은 줄이 보이면 OK.
+   안 보이면 CH340 드라이버(CH341SER) 설치 후 다시 꽂기
+3. 명령 창 두 개:
+   ```
+   python serial_reader.py data/live.csv              # COM 포트 자동. 안 되면 --ports COM3
+   python server.py --live data/live.csv --scale 40
+   ```
+4. 처음 켤 때 **Windows 방화벽** 창이 뜨면 "개인 네트워크" 허용 → 아이패드에서 `http://노트북IP:8000` 접속
+5. 노트북과 아이패드 모두 **같은 아이폰 핫스팟**에 연결 (호환성 최대화 켜기)
+
+`python` 이 안 되면 `py` 로 (`py server.py ...`). 펌웨어 업로드는 맥에서 해 둔 상태라 윈도우에는 Arduino가 없어도 됨.
+
 ## 🔧 펌웨어 컴파일 (보드 없어도 됨)
 
 | 펌웨어 | 보드 선택 | 설정 | 용량 |

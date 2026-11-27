@@ -50,7 +50,7 @@ def load_exams(folder):
         base = f[:-4]
         truth = {}
         if os.path.exists(base + "_truth.csv"):
-            with open(base + "_truth.csv") as tf:
+            with open(base + "_truth.csv", encoding="utf-8") as tf:
                 for line in tf:
                     if line.startswith("#") or line.startswith("id,"):
                         continue
@@ -59,7 +59,7 @@ def load_exams(folder):
                         truth[hash_id(p[0]) if ":" in p[0] else p[0]] = p[1]
         meta = {}
         if os.path.exists(base + "_meta.json"):
-            meta = json.load(open(base + "_meta.json"))
+            meta = json.load(open(base + "_meta.json", encoding="utf-8"))
         rows = load_rows(f)
         out.append((os.path.basename(base), rows, truth, float(meta.get("scale", 1.0)),
                     float(meta.get("end", max(r[0] for r in rows)))))
@@ -105,7 +105,7 @@ def save_confusion(pairs, outdir):
     m = np.zeros((len(ALL_ZONES), len(cols)), int)
     for t, p in pairs:
         m[ALL_ZONES.index(t), cols.index(p)] += 1
-    with open(os.path.join(outdir, "confusion.csv"), "w", newline="") as f:
+    with open(os.path.join(outdir, "confusion.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["실제\\판정"] + cols)
         for z, row in zip(ALL_ZONES, m):
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     if model:
         with open(os.path.join(outdir, "rf.pkl"), "wb") as f:
             pickle.dump(model, f)
-    with open(os.path.join(outdir, "signals.csv"), "w", newline="") as f:
+    with open(os.path.join(outdir, "signals.csv"), "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["방식", "시험", "신호", "종류", "부근", "교실안_분", "교실안_비율", "정답", "판정", "근거"])
         w.writerows(sig_rows)
@@ -271,7 +271,7 @@ if __name__ == "__main__":
             L.append(f"- {name}: 숨긴 기기 '높음' {frac(r['hi'])}, 짧게 켜진 기기 '관찰 이상' {frac(r['watch'])}, 잘못된 경보 {r['false']}회")
     L += ["", "신호별 판정은 `signals.csv` 에서 '정답'과 '판정'이 다른 줄을 찾아 원인을 확인합니다.",
           "", "> 발표에는 신호 지도에 쓰지 않은 날 측정한 실측 결과만 씁니다."]
-    with open(os.path.join(outdir, "report.md"), "w") as f:
+    with open(os.path.join(outdir, "report.md"), "w", encoding="utf-8") as f:
         f.write("\n".join(L) + "\n")
     print("\n" + "\n".join(L[7:13 + (4 if rf else 2)]))
     print(f"\n보고서 → {outdir}/report.md")
